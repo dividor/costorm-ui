@@ -45,6 +45,7 @@
             padding: 20px;
             margin-bottom: 15px;
             background-color: #f8f9fa;
+            width: 100%;
         }
         .message {
             margin-bottom: 15px;
@@ -83,11 +84,14 @@
         }
         .input-group {
             margin-bottom: 20px;
+            width: 100%;
+            max-width: 100%;
         }
         .input-group .form-control {
             border-radius: 20px 0 0 20px;
             padding: 10px 15px;
             border: 1px solid #e0e0e0;
+            flex: 1;
         }
         .input-group .btn {
             border-radius: 0 20px 20px 0;
@@ -171,6 +175,7 @@
             display: none;
             max-width: 1000px;
             margin: 0 auto;
+            padding: 0;
         }
         .markdown h1, .markdown h2 {
             margin-top: 1.5rem;
@@ -369,8 +374,6 @@
                 <!-- Messages will be added here -->
             </div>
             
-            <div class="typing-indicator" id="typing-indicator">AI is waiting for your response...</div>
-            
             <div class="input-group">
                 <input type="text" class="form-control" id="message-input" placeholder="Join the conversation...">
                 <button class="btn btn-primary" id="send-btn">
@@ -415,7 +418,6 @@
             const articleContent = document.getElementById('article-content');
             const downloadBtn = document.getElementById('download-btn');
             const newResearchBtn = document.getElementById('new-research-btn');
-            const typingIndicator = document.getElementById('typing-indicator');
             const statusBar = document.getElementById('status-bar');
             
             // Typing detection variables
@@ -451,20 +453,11 @@
             socket.on('message', function(data) {
                 // Don't show system messages about generating the final article
                 if (data.role === 'system' && data.content.includes('Generating final article')) {
-                    // Instead, update the status bar
-                    const statusText = document.querySelector('#status-bar .status-text');
-                    statusText.textContent = 'Generating final article...';
-                    statusBar.style.display = 'flex';
                     return;
                 }
                 
                 addMessage(data.role, data.content);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
-                
-                // Show typing indicator when AI is waiting for human response
-                if (data.role !== 'user' && data.role !== 'system') {
-                    typingIndicator.style.display = 'block';
-                }
             });
             
             socket.on('error', function(data) {
@@ -492,7 +485,6 @@
             socket.on('final_article', function(data) {
                 chatInterface.style.display = 'none';
                 articleContainer.style.display = 'block';
-                typingIndicator.style.display = 'none';
                 statusBar.style.display = 'none';
                 
                 console.log("Received final article");
@@ -623,11 +615,6 @@
             
             messageInput.addEventListener('keydown', function() {
                 clearTimeout(typingTimer);
-            });
-            
-            messageInput.addEventListener('focus', function() {
-                // Hide typing indicator when user is about to respond
-                typingIndicator.style.display = 'none';
             });
             
             downloadBtn.addEventListener('click', function() {
