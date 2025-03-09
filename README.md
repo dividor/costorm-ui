@@ -1,6 +1,8 @@
-# Co-Storm AI Research Web Application
+**Note**: This application was created using only AI, as part of [this blogpost]()
 
-This web application provides a user-friendly interface for the Co-Storm AI research algorithm. It allows users to input a research topic and engage in an interactive conversation with the AI to refine the research and generate a comprehensive article with citations.
+# Co-STORM AI Research Web Application
+
+This web application provides a user-friendly interface for the [Co-Storm AI research algorithm](). It allows users to input a research topic and engage in an interactive conversation with the AI to refine the research and generate a comprehensive article with citations.
 
 ## Features
 
@@ -25,22 +27,21 @@ This web application provides a user-friendly interface for the Co-Storm AI rese
    cd costorm-ui
    ```
 
-2. Install the required dependencies:
+2. Set up an environment (assuming you have [miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install) installed)...
+
+```
+conda create -n storm python=3.11
+conda activate storm
+pip install -r requirements.txt
+```
+
+3. Install the required dependencies:
    ```
    pip install -r requirements.txt
    ```
 
-3. Create a `secrets.toml` file based on the provided example:
-   ```
-   cp secrets.toml.example secrets.toml
-   ```
+4. Copy `.env.example` to `.env` and populate OPENAI_API_KEY and SERP_API_KEY. Note: You can use other LLMs and search engines, as well as your own function. See the [Storm Repo](https://github.com/stanford-oval/storm/tree/main) for more details.
 
-4. Edit the `secrets.toml` file to add your API keys:
-   ```
-   OPENAI_API_KEY = "your-openai-api-key"
-   OPENAI_API_TYPE = "openai"
-   SERPER_API_KEY = "your-serper-api-key"  # Or use BING_SEARCH_API_KEY or TAVILY_API_KEY
-   ```
 
 ## Usage
 
@@ -73,32 +74,51 @@ You can configure the application using the following environment variables:
 - `BING_SEARCH_API_KEY`: Bing Search API key (if using Bing)
 - `TAVILY_API_KEY`: Tavily API key (if using Tavily)
 - `HUMAN_WAIT_TIME`: Number of seconds to wait for human input after each AI message (default: 10)
+- `NUM_TURNS`: Number of conversation turns in the research process (default: 10)
 
-## Customization
+### Co-Storm Algorithm Parameters
 
-You can modify the following constants in `app.py` to customize the application behavior:
+The following parameters control the behavior of the Co-Storm algorithm:
 
-- `NUM_TURNS`: Number of conversation turns in the research process
-- `HUMAN_WAIT_TIME`: Number of seconds to wait for human input after each AI message
+- `RETRIEVE_TOP_K`: Number of search results to retrieve (default: 10)
+- `MAX_SEARCH_QUERIES`: Maximum number of search queries (default: 2)
+- `MAX_SEARCH_THREAD`: Maximum number of search threads (default: 5)
+- `MAX_SEARCH_QUERIES_PER_TURN`: Maximum search queries per turn (default: 3)
+- `WARMSTART_MAX_NUM_EXPERTS`: Maximum number of experts in warmstart (default: 3)
+- `WARMSTART_MAX_TURN_PER_EXPERTS`: Maximum turns per expert in warmstart (default: 2)
+- `WARMSTART_MAX_THREAD`: Maximum threads in warmstart (default: 3)
+- `MAX_THREAD_NUM`: Maximum number of threads (default: 10)
+- `MAX_NUM_ROUND_TABLE_EXPERTS`: Maximum number of round table experts (default: 2)
+- `MODERATOR_OVERRIDE_N_CONSECUTIVE_ANSWERING_TURN`: Number of consecutive turns before moderator override (default: 3)
+- `NODE_EXPANSION_TRIGGER_COUNT`: Node expansion trigger count (default: 10)
 
-The application also features typing detection, which will pause the AI's responses as long as the user is typing, ensuring a more natural conversation flow.
+The application features typing detection, which will pause the AI's responses as long as the user is typing, ensuring a more natural conversation flow.
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Acknowledgments
 
-- This application uses the Co-Storm algorithm from the knowledge_storm package
-- Built with Flask and Socket.IO for real-time communication
+## Running the Co-STORM sample script
+
+If you are interested in running the sample Co-STORM script `run_costorm_gpt.py` used as the starting point for AI to generate this app (as found on in the Co-STORM repo examples, adjusted with a minor bug fix) ...
+
+1. Create a `secrets.toml` file based on the provided example:
+   ```
+   cp secrets.toml.example secrets.toml
+   ```
+
+2. Edit the `secrets.toml` file to add your API keys:
+   ```
+   OPENAI_API_KEY = "your-openai-api-key"
+   OPENAI_API_TYPE = "openai"
+   SERPER_API_KEY = "your-serper-api-key"  # Or use BING_SEARCH_API_KEY or TAVILY_API_KEY
+   ```
+
+You can then run the script with `python run_costorm_gpt.py --output-dir ./results --enable_log_print --retriever serper`
 
 
-conda create -n storm python=3.11
-conda activate storm
-pip install -r requirements.txt
 
-
-Had to fix bug in demo to reogranize
 
 python run_costorm_gpt.py --output-dir ./results --enable_log_print --retriever serper
 

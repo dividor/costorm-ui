@@ -28,7 +28,6 @@ from knowledge_storm.utils import load_api_key
 
 # Load environment variables
 load_dotenv()
-load_api_key(toml_file_path="secrets.toml")
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -37,9 +36,20 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Store active research sessions
 active_sessions = {}
 
-# Constants
-NUM_TURNS = 10  # Number of conversation turns
-HUMAN_WAIT_TIME = int(os.getenv("HUMAN_WAIT_TIME", "10"))  # Seconds to wait for human input
+# Application constants
+NUM_TURNS = int(os.getenv("NUM_TURNS", 10))  # Number of conversation turns
+HUMAN_WAIT_TIME = int(os.getenv("HUMAN_WAIT_TIME", 10))  # Seconds to wait for human input
+RETRIEVE_TOP_K = int(os.getenv("RETRIEVE_TOP_K", 10))
+MAX_SEARCH_QUERIES = int(os.getenv("MAX_SEARCH_QUERIES", 2))
+MAX_SEARCH_THREAD = int(os.getenv("MAX_SEARCH_THREAD", 5))
+MAX_SEARCH_QUERIES_PER_TURN = int(os.getenv("MAX_SEARCH_QUERIES_PER_TURN", 3))
+WARMSTART_MAX_NUM_EXPERTS = int(os.getenv("WARMSTART_MAX_NUM_EXPERTS", 3))
+WARMSTART_MAX_TURN_PER_EXPERTS = int(os.getenv("WARMSTART_MAX_TURN_PER_EXPERTS", 2))
+WARMSTART_MAX_THREAD = int(os.getenv("WARMSTART_MAX_THREAD", 3))
+MAX_THREAD_NUM = int(os.getenv("MAX_THREAD_NUM", 10))
+MAX_NUM_ROUND_TABLE_EXPERTS = int(os.getenv("MAX_NUM_ROUND_TABLE_EXPERTS", 2))
+MODERATOR_OVERRIDE_N_CONSECUTIVE_ANSWERING_TURN = int(os.getenv("MODERATOR_OVERRIDE_N_CONSECUTIVE_ANSWERING_TURN", 3))
+NODE_EXPANSION_TRIGGER_COUNT = int(os.getenv("NODE_EXPANSION_TRIGGER_COUNT", 10))
 
 def create_costorm_runner(topic):
     """Create and initialize a CoStormRunner instance."""
@@ -88,18 +98,18 @@ def create_costorm_runner(topic):
     # Configure runner arguments
     runner_argument = RunnerArgument(
         topic=topic,
-        retrieve_top_k=10,
-        max_search_queries=2,
+        retrieve_top_k=RETRIEVE_TOP_K,
+        max_search_queries=MAX_SEARCH_QUERIES,
         total_conv_turn=NUM_TURNS,
-        max_search_thread=5,
-        max_search_queries_per_turn=3,
-        warmstart_max_num_experts=3,
-        warmstart_max_turn_per_experts=2,
-        warmstart_max_thread=3,
-        max_thread_num=10,
-        max_num_round_table_experts=2,
-        moderator_override_N_consecutive_answering_turn=3,
-        node_expansion_trigger_count=10,
+        max_search_thread=MAX_SEARCH_THREAD,
+        max_search_queries_per_turn=MAX_SEARCH_QUERIES_PER_TURN,
+        warmstart_max_num_experts=WARMSTART_MAX_NUM_EXPERTS,
+        warmstart_max_turn_per_experts=WARMSTART_MAX_TURN_PER_EXPERTS,
+        warmstart_max_thread=WARMSTART_MAX_THREAD,
+        max_thread_num=MAX_THREAD_NUM,
+        max_num_round_table_experts=MAX_NUM_ROUND_TABLE_EXPERTS,
+        moderator_override_N_consecutive_answering_turn=MODERATOR_OVERRIDE_N_CONSECUTIVE_ANSWERING_TURN,
+        node_expansion_trigger_count=NODE_EXPANSION_TRIGGER_COUNT,
     )
     
     # Initialize logging

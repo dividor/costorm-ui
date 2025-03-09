@@ -338,6 +338,39 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
+        /* Discussion container styles */
+        .discussion-container {
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out, margin 0.3s ease-in-out;
+            opacity: 0;
+            margin-top: 0;
+        }
+        .discussion-container.show {
+            max-height: 500px;
+            opacity: 1;
+            margin-top: 15px;
+        }
+        .discussion-header {
+            padding: 10px 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .discussion-content {
+            background-color: #f8f9fa;
+        }
+        .discussion-content .message {
+            margin-bottom: 12px;
+        }
+        #show-discussion-btn {
+            transition: all 0.2s ease;
+        }
+        #show-discussion-btn:hover {
+            background-color: #e9ecef;
+        }
     </style>
 </head>
 <body>
@@ -384,7 +417,25 @@
         
         <!-- Article Container -->
         <div class="article-container" id="article-container">
-            <h2 class="text-center mb-4">Research Article</h2>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Research Article</h2>
+                <button class="btn btn-outline-secondary btn-sm" id="show-discussion-btn">
+                    <i class="fas fa-comments me-1"></i> See experts discussion
+                </button>
+            </div>
+            
+            <div class="discussion-container" id="discussion-container">
+                <div class="discussion-header d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Expert Discussion</h5>
+                    <button class="btn btn-sm btn-outline-secondary" id="hide-discussion-btn">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="discussion-content p-3 border rounded" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Discussion content will be cloned here -->
+                </div>
+            </div>
+            
             <div class="article-content markdown" id="article-content"></div>
             <div class="d-grid gap-2 mt-5">
                 <button class="btn btn-success" id="download-btn">
@@ -419,6 +470,9 @@
             const downloadBtn = document.getElementById('download-btn');
             const newResearchBtn = document.getElementById('new-research-btn');
             const statusBar = document.getElementById('status-bar');
+            const showDiscussionBtn = document.getElementById('show-discussion-btn');
+            const hideDiscussionBtn = document.getElementById('hide-discussion-btn');
+            const discussionContainer = document.getElementById('discussion-container');
             
             // Typing detection variables
             let typingTimer;
@@ -486,6 +540,17 @@
                 chatInterface.style.display = 'none';
                 articleContainer.style.display = 'block';
                 statusBar.style.display = 'none';
+                
+                // Clone chat messages to discussion container
+                const discussionContent = document.querySelector('.discussion-content');
+                discussionContent.innerHTML = ''; // Clear previous content
+                
+                // Clone all messages from the chat container
+                const chatMessages = chatContainer.querySelectorAll('.message');
+                chatMessages.forEach(function(message) {
+                    const clonedMessage = message.cloneNode(true);
+                    discussionContent.appendChild(clonedMessage);
+                });
                 
                 console.log("Received final article");
                 console.log("Content type:", typeof data.content);
@@ -635,8 +700,24 @@
                 topicInput.value = '';
                 chatContainer.innerHTML = '';
                 statusBar.style.display = 'none';
+                discussionContainer.classList.remove('show');
                 const statusText = document.querySelector('#status-bar .status-text');
                 statusText.textContent = 'Initializing...';
+            });
+            
+            showDiscussionBtn.addEventListener('click', function() {
+                if (discussionContainer.classList.contains('show')) {
+                    discussionContainer.classList.remove('show');
+                    this.innerHTML = '<i class="fas fa-comments me-1"></i> See experts discussion';
+                } else {
+                    discussionContainer.classList.add('show');
+                    this.innerHTML = '<i class="fas fa-comments me-1"></i> Hide experts discussion';
+                }
+            });
+            
+            hideDiscussionBtn.addEventListener('click', function() {
+                discussionContainer.classList.remove('show');
+                showDiscussionBtn.innerHTML = '<i class="fas fa-comments me-1"></i> See experts discussion';
             });
             
             // Helper functions
