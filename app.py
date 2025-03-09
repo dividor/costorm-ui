@@ -104,7 +104,6 @@ def create_costorm_runner(topic):
     
     # Initialize logging
     logging_wrapper = LoggingWrapper(lm_config)
-    callback_handler = LocalConsolePrintCallBackHandler()
     
     # Initialize retrieval module (using Serper by default)
     retriever_type = os.getenv("RETRIEVER_TYPE", "serper")
@@ -132,7 +131,7 @@ def create_costorm_runner(topic):
         runner_argument=runner_argument,
         logging_wrapper=logging_wrapper,
         rm=rm,
-        callback_handler=callback_handler,
+        callback_handler=None,  # We'll set this in run_costorm_session
     )
     
     return costorm_runner
@@ -195,16 +194,35 @@ def process_citations(article, instance_dump):
         # HTML version with clickable links
         html_references = "\n\n# References\n\n"
         for citation_id in sorted(citations.keys(), key=lambda x: int(str(x)) if str(x).isdigit() else float('inf')):
-            html_references += f'{citation_id}. <a href="{citations[citation_id]["url"]}" target="_blank">{citations[citation_id]["title"]}</a>\n\n'
+            html_references += f'{citation_id}. <a href="{citations[citation_id]["url"]}" target="_blank" rel="noopener noreferrer" class="citation-link">{citations[citation_id]["title"]}</a>\n'
         html_article += html_references
         
         # Plain markdown version with URLs
         markdown_references = "\n\n# References\n\n"
         for citation_id in sorted(citations.keys(), key=lambda x: int(str(x)) if str(x).isdigit() else float('inf')):
-            markdown_references += f'{citation_id}. [{citations[citation_id]["title"]}]({citations[citation_id]["url"]})\n\n'
+            markdown_references += f'{citation_id}. [{citations[citation_id]["title"]}]({citations[citation_id]["url"]})\n'
         article += markdown_references
     else:
         print("No citations found, skipping references section")
+    
+    # Ensure proper Markdown formatting for headers
+    # This will help the frontend render the Markdown correctly
+    html_article = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html_article, flags=re.MULTILINE)
+    html_article = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html_article, flags=re.MULTILINE)
+    html_article = re.sub(r'^### (.+)$', r'<h3>\1</h3>', html_article, flags=re.MULTILINE)
+    
+    # Convert paragraphs to proper HTML
+    paragraphs = html_article.split('\n\n')
+    processed_paragraphs = []
+    for paragraph in paragraphs:
+        # Skip if it's already an HTML tag or empty
+        if paragraph.strip() == '' or paragraph.strip().startswith('<'):
+            processed_paragraphs.append(paragraph)
+        else:
+            # Wrap in paragraph tags
+            processed_paragraphs.append(f'<p>{paragraph}</p>')
+    
+    html_article = '\n\n'.join(processed_paragraphs)
     
     print("Citation processing complete")
     return {
@@ -242,12 +260,16 @@ def run_costorm_session(session_id, topic):
         output_dir = f"./results/{session_id}"
         os.makedirs(output_dir, exist_ok=True)
         
-        # Initialize the runner
+        # Initialize the runner with custom callback handler
+        callback_handler = UIStatusCallbackHandler(socketio, session_id)
         costorm_runner = create_costorm_runner(topic)
         active_sessions[session_id]["runner"] = costorm_runner
         
-        # Warm start the system
-        socketio.emit('message', {'role': 'system', 'content': 'Warming up the Co-Storm algorithm...'}, room=session_id)
+        # Set the callback handler
+        costorm_runner.callback_handler = callback_handler
+        
+        # Warm start the system - use only status updates, not message
+        socketio.emit('status_update', {'status': 'Starting warm-up phase...'}, room=session_id)
         costorm_runner.warm_start()
         
         # Run the conversation for NUM_TURNS turns
@@ -404,6 +426,85 @@ def run_costorm_session(session_id, topic):
         import traceback
         traceback.print_exc()
 
+# Custom callback handler to update UI status
+class UIStatusCallbackHandler(LocalConsolePrintCallBackHandler):
+    """Callback handler that updates the UI status."""
+    
+    def __init__(self, socketio, session_id):
+        super().__init__()
+        self.socketio = socketio
+        self.session_id = session_id
+    
+    def _send_status_update(self, status):
+        """Send status update to the UI."""
+        self.socketio.emit('status_update', {'status': status}, room=self.session_id)
+        print(f"Status update: {status}")
+    
+    def on_turn_policy_planning_start(self, **kwargs):
+        """Run when the turn policy planning begins."""
+        self._send_status_update("Planning next conversation turn...")
+        super().on_turn_policy_planning_start(**kwargs)
+    
+    def on_expert_action_planning_start(self, **kwargs):
+        """Run when the expert action planning begins."""
+        self._send_status_update("Planning expert actions...")
+        super().on_expert_action_planning_start(**kwargs)
+    
+    def on_expert_action_planning_end(self, **kwargs):
+        """Run when the expert action planning ends."""
+        self._send_status_update("Expert actions planned")
+        super().on_expert_action_planning_end(**kwargs)
+    
+    def on_expert_information_collection_start(self, **kwargs):
+        """Run when the expert information collection starts."""
+        self._send_status_update("Collecting information...")
+        super().on_expert_information_collection_start(**kwargs)
+    
+    def on_expert_information_collection_end(self, info, **kwargs):
+        """Run when the expert information collection ends."""
+        self._send_status_update(f"Collected {len(info)} pieces of information")
+        super().on_expert_information_collection_end(info, **kwargs)
+    
+    def on_expert_utterance_generation_end(self, **kwargs):
+        """Run when the expert utterance generation ends."""
+        self._send_status_update("Generated expert response")
+        super().on_expert_utterance_generation_end(**kwargs)
+    
+    def on_expert_utterance_polishing_start(self, **kwargs):
+        """Run when the expert utterance polishing begins."""
+        self._send_status_update("Refining expert response...")
+        super().on_expert_utterance_polishing_start(**kwargs)
+    
+    def on_mindmap_insert_start(self, **kwargs):
+        """Run when the process of inserting new information into the mindmap starts."""
+        self._send_status_update("Organizing information...")
+        super().on_mindmap_insert_start(**kwargs)
+    
+    def on_mindmap_insert_end(self, **kwargs):
+        """Run when the process of inserting new information into the mindmap ends."""
+        self._send_status_update("Information organized")
+        super().on_mindmap_insert_end(**kwargs)
+    
+    def on_mindmap_reorg_start(self, **kwargs):
+        """Run when the reorganization of the mindmap begins."""
+        self._send_status_update("Reorganizing knowledge structure...")
+        super().on_mindmap_reorg_start(**kwargs)
+    
+    def on_expert_list_update_start(self, **kwargs):
+        """Run when the expert list update starts."""
+        self._send_status_update("Updating expert list...")
+        super().on_expert_list_update_start(**kwargs)
+    
+    def on_article_generation_start(self, **kwargs):
+        """Run when the article generation process begins."""
+        self._send_status_update("Generating final article...")
+        super().on_article_generation_start(**kwargs)
+    
+    def on_warmstart_update(self, message, **kwargs):
+        """Run when the warm start process has update."""
+        self._send_status_update(f"Warming up: {message}")
+        super().on_warmstart_update(message, **kwargs)
+
 @app.route('/')
 def index():
     """Render the main page."""
@@ -489,4 +590,4 @@ def handle_typing_stopped():
         active_sessions[session_id]["user_typing"] = False
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5000) 
+    socketio.run(app, debug=True, host='0.0.0.0', port=5001) 

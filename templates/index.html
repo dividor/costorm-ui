@@ -149,6 +149,89 @@
         .article-content a:hover {
             text-decoration: underline !important;
         }
+        /* Status bar */
+        .status-bar {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 10px 15px;
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+            color: #495057;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .status-spinner {
+            margin-right: 10px;
+            color: #0d6efd;
+            font-size: 1rem;
+        }
+        .status-text {
+            flex-grow: 1;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+        .status-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(13, 110, 253, 0.05);
+            opacity: 0;
+            animation: throb 2s infinite;
+        }
+        @keyframes throb {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        /* Markdown styling */
+        .article-content h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        .article-content h2 {
+            font-size: 1.75rem;
+            font-weight: bold;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: #444;
+        }
+        .article-content h3 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: #555;
+        }
+        .article-content p {
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+        .article-content ul, .article-content ol {
+            margin-bottom: 1rem;
+            padding-left: 2rem;
+        }
+        .article-content li {
+            margin-bottom: 0.5rem;
+        }
+        .article-content blockquote {
+            border-left: 4px solid #ddd;
+            padding-left: 1rem;
+            margin-left: 0;
+            color: #666;
+        }
     </style>
 </head>
 <body>
@@ -177,6 +260,11 @@
         <div class="chat-interface">
             <div id="current-topic" class="alert alert-info text-center"></div>
             
+            <div class="status-bar" id="status-bar" style="display: none;">
+                <span class="status-spinner"><i class="fas fa-circle-notch fa-spin"></i></span>
+                <span class="status-text">Initializing...</span>
+            </div>
+            
             <div class="chat-container" id="chat-container">
                 <!-- Messages will be added here -->
             </div>
@@ -188,13 +276,6 @@
                 <button class="btn btn-primary" id="send-btn">
                     <i class="fas fa-paper-plane"></i> Send
                 </button>
-            </div>
-            
-            <div class="loading" id="loading" style="display: none;">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p>Processing your research...</p>
             </div>
         </div>
         
@@ -229,8 +310,8 @@
             const articleContent = document.getElementById('article-content');
             const downloadBtn = document.getElementById('download-btn');
             const newResearchBtn = document.getElementById('new-research-btn');
-            const loading = document.getElementById('loading');
             const typingIndicator = document.getElementById('typing-indicator');
+            const statusBar = document.getElementById('status-bar');
             
             // Typing detection variables
             let typingTimer;
@@ -280,11 +361,21 @@
                 topicForm.style.display = 'none';
                 chatInterface.style.display = 'block';
                 currentTopic.textContent = `Research Topic: ${data.topic}`;
-                loading.style.display = 'block';
+                statusBar.style.display = 'flex';
+            });
+            
+            socket.on('status_update', function(data) {
+                const statusText = document.querySelector('#status-bar .status-text');
+                // Clear any existing text and set the new status
+                statusText.textContent = data.status;
+                
+                // Make the status bar visible in case it was hidden
+                statusBar.style.display = 'flex';
+                
+                console.log("Status update:", data.status);
             });
             
             socket.on('final_article', function(data) {
-                loading.style.display = 'none';
                 chatInterface.style.display = 'none';
                 articleContainer.style.display = 'block';
                 typingIndicator.style.display = 'none';
@@ -293,11 +384,41 @@
                 console.log("Content type:", typeof data.content);
                 console.log("Content sample:", data.content.substring(0, 200));
                 
-                // Use the HTML content directly
-                articleContent.innerHTML = data.content;
+                // First convert the HTML content to a DOM element to work with it
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = data.content;
+                
+                // Find all the Markdown headers and convert them to proper HTML
+                const markdownHeaders = tempDiv.innerHTML.match(/^# (.+)$/gm);
+                if (markdownHeaders) {
+                    console.log(`Found ${markdownHeaders.length} Markdown headers`);
+                    let processedContent = tempDiv.innerHTML;
+                    
+                    // Replace # Header with <h1>Header</h1>
+                    processedContent = processedContent.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+                    
+                    // Replace ## Header with <h2>Header</h2>
+                    processedContent = processedContent.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+                    
+                    // Replace ### Header with <h3>Header</h3>
+                    processedContent = processedContent.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+                    
+                    tempDiv.innerHTML = processedContent;
+                }
+                
+                // If there are no HTML tags in the content, convert from Markdown to HTML
+                if (!data.content.includes('<a href=') && !data.content.includes('<h1>')) {
+                    console.log("Converting markdown to HTML");
+                    articleContent.innerHTML = marked.parse(data.content);
+                } else {
+                    // Otherwise use the processed HTML content
+                    console.log("Using processed HTML content");
+                    articleContent.innerHTML = tempDiv.innerHTML;
+                }
                 
                 // Apply reference section styling
-                const referencesSection = articleContent.querySelector('h1:last-of-type');
+                const referencesSection = Array.from(articleContent.querySelectorAll('h1')).find(h1 => 
+                    h1.textContent === 'References') || articleContent.querySelector('h1:last-of-type');
                 if (referencesSection && referencesSection.textContent === 'References') {
                     console.log("Found References section, applying styling");
                     const referencesSectionParent = referencesSection.parentElement || articleContent;
@@ -306,12 +427,32 @@
                     console.log("References section not found");
                 }
                 
-                // Make sure all links are clickable
+                // Make sure all links are clickable and open in a new tab
                 const links = articleContent.querySelectorAll('a');
                 console.log(`Found ${links.length} links in the article`);
                 links.forEach(link => {
                     link.setAttribute('target', '_blank');
+                    link.setAttribute('rel', 'noopener noreferrer');
                     console.log(`Link: ${link.textContent} -> ${link.getAttribute('href')}`);
+                });
+                
+                // Convert plain text paragraphs to proper HTML paragraphs
+                const textNodes = Array.from(articleContent.childNodes)
+                    .filter(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim().length > 0);
+                
+                textNodes.forEach(textNode => {
+                    const paragraphs = textNode.textContent.split('\n\n');
+                    if (paragraphs.length > 1) {
+                        const fragment = document.createDocumentFragment();
+                        paragraphs.forEach(paragraph => {
+                            if (paragraph.trim().length > 0) {
+                                const p = document.createElement('p');
+                                p.textContent = paragraph.trim();
+                                fragment.appendChild(p);
+                            }
+                        });
+                        textNode.parentNode.replaceChild(fragment, textNode);
+                    }
                 });
                 
                 // Store the raw markdown for download
@@ -425,9 +566,6 @@
                 messageDiv.appendChild(contentP);
                 
                 chatContainer.appendChild(messageDiv);
-                
-                // Hide loading indicator after first AI message
-                loading.style.display = 'none';
             }
         });
     </script>
