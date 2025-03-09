@@ -15,7 +15,7 @@
             padding: 20px 0;
         }
         .container {
-            max-width: 900px;
+            max-width: 1100px;
             margin: 0 auto;
             padding: 0 20px;
         }
@@ -34,23 +34,23 @@
         .header p {
             font-size: 1.1rem;
             color: #7f8c8d;
-            max-width: 600px;
+            max-width: 800px;
             margin: 0 auto;
         }
         .chat-container {
-            height: 400px;
+            height: 450px;
             overflow-y: auto;
             border: 1px solid #e9ecef;
             border-radius: 8px;
-            padding: 15px;
+            padding: 20px;
             margin-bottom: 15px;
             background-color: #f8f9fa;
         }
         .message {
             margin-bottom: 15px;
-            padding: 12px 15px;
+            padding: 12px 18px;
             border-radius: 8px;
-            max-width: 85%;
+            max-width: 90%;
             position: relative;
             line-height: 1.5;
         }
@@ -111,15 +111,16 @@
         }
         .article-container {
             display: none;
-            max-width: 800px;
+            max-width: 1000px;
             margin: 0 auto;
-            padding: 25px;
+            padding: 30px;
             background-color: white;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
         }
         .article-content {
             white-space: pre-line;
+            line-height: 1.6;
         }
         .loading {
             text-align: center;
@@ -130,9 +131,9 @@
             height: 3rem;
         }
         #topic-form {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
-            padding: 25px;
+            padding: 30px;
             background-color: white;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.08);
@@ -140,13 +141,16 @@
         .research-info {
             background-color: #f8f9fa;
             border-radius: 8px;
-            padding: 15px;
-            font-size: 0.95rem;
+            padding: 20px;
+            font-size: 1rem;
             color: #6c757d;
-            margin-top: 20px;
+            margin-top: 25px;
+            text-align: center;
         }
         .research-info p {
             margin: 0;
+            max-width: 700px;
+            margin: 0 auto;
         }
         .form-label {
             font-weight: 500;
@@ -165,7 +169,7 @@
         }
         .chat-interface {
             display: none;
-            max-width: 800px;
+            max-width: 1000px;
             margin: 0 auto;
         }
         .markdown h1, .markdown h2 {
@@ -203,7 +207,11 @@
         }
         .references-section h1 {
             font-size: 1.75rem;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
+        }
+        .references-section p {
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
         }
         .references-section a {
             color: #0d6efd !important;
@@ -227,9 +235,9 @@
             background-color: #f8f9fa;
             border: 1px solid #e9ecef;
             border-radius: 8px;
-            padding: 10px 15px;
-            margin-bottom: 15px;
-            font-size: 0.9rem;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            font-size: 1rem;
             color: #495057;
             position: relative;
             overflow: hidden;
@@ -238,9 +246,9 @@
             box-shadow: 0 1px 2px rgba(0,0,0,0.03);
         }
         .status-spinner {
-            margin-right: 10px;
+            margin-right: 12px;
             color: #0d6efd;
-            font-size: 1rem;
+            font-size: 1.1rem;
         }
         .status-text {
             flex-grow: 1;
@@ -289,11 +297,11 @@
             color: #555;
         }
         .article-content p {
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
             line-height: 1.6;
         }
         .article-content ul, .article-content ol {
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
             padding-left: 2rem;
         }
         .article-content li {
@@ -310,9 +318,10 @@
             color: #0366d6;
             border-color: #c8e1ff;
             border-radius: 8px;
-            padding: 10px 15px;
-            margin-bottom: 15px;
+            padding: 12px 20px;
+            margin-bottom: 20px;
             font-weight: 500;
+            font-size: 1.1rem;
         }
         #start-btn {
             padding: 12px 24px;
@@ -335,7 +344,6 @@
         
         <!-- Topic Input Form -->
         <div id="topic-form">
-            <h2 class="text-center mb-4">Start Your Research</h2>
             <div class="mb-4">
                 <label for="topic-input" class="form-label">Enter a research topic:</label>
                 <input type="text" class="form-control" id="topic-input" placeholder="e.g., Climate change impacts on agriculture">
@@ -364,7 +372,7 @@
             <div class="typing-indicator" id="typing-indicator">AI is waiting for your response...</div>
             
             <div class="input-group">
-                <input type="text" class="form-control" id="message-input" placeholder="Type your response...">
+                <input type="text" class="form-control" id="message-input" placeholder="Join the conversation...">
                 <button class="btn btn-primary" id="send-btn">
                     <i class="fas fa-paper-plane"></i> Send
                 </button>
@@ -441,6 +449,15 @@
             });
             
             socket.on('message', function(data) {
+                // Don't show system messages about generating the final article
+                if (data.role === 'system' && data.content.includes('Generating final article')) {
+                    // Instead, update the status bar
+                    const statusText = document.querySelector('#status-bar .status-text');
+                    statusText.textContent = 'Generating final article...';
+                    statusBar.style.display = 'flex';
+                    return;
+                }
+                
                 addMessage(data.role, data.content);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
                 
@@ -521,6 +538,13 @@
                     console.log("Found References section, applying styling");
                     const referencesSectionParent = referencesSection.parentElement || articleContent;
                     referencesSectionParent.classList.add('references-section');
+                    
+                    // Apply specific styling to reference paragraphs
+                    const refParagraphs = Array.from(referencesSectionParent.querySelectorAll('p'));
+                    refParagraphs.forEach(p => {
+                        p.style.marginBottom = '0.5rem';
+                        p.style.lineHeight = '1.4';
+                    });
                 } else {
                     console.log("References section not found");
                 }
