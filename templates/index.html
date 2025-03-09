@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Co-Storm AI Research</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .chat-container {
+            height: 500px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 10px;
+            max-width: 80%;
+            position: relative;
+        }
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+        .ai-message {
+            background-color: #f1f1f1;
+            color: #333;
+            margin-right: auto;
+        }
+        .system-message {
+            background-color: #ffc107;
+            color: #333;
+            margin: 10px auto;
+            text-align: center;
+            max-width: 90%;
+        }
+        .message-role {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .article-container {
+            display: none;
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        .article-content {
+            white-space: pre-line;
+        }
+        .loading {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        #topic-form {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .research-info {
+            text-align: center;
+            margin-bottom: 20px;
+            font-style: italic;
+            color: #6c757d;
+        }
+        .chat-interface {
+            display: none;
+        }
+        .markdown h1, .markdown h2 {
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .markdown p {
+            margin-bottom: 1rem;
+        }
+        .typing-indicator {
+            font-style: italic;
+            color: #6c757d;
+            margin-bottom: 10px;
+            display: none;
+        }
+        /* Citation styles */
+        .citation-link {
+            color: #0d6efd !important;
+            text-decoration: none !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+        }
+        .citation-link:hover {
+            text-decoration: underline !important;
+        }
+        /* References section styles */
+        .references-section {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #dee2e6;
+        }
+        .references-section h1 {
+            font-size: 1.75rem;
+            margin-bottom: 1rem;
+        }
+        .references-section a {
+            color: #0d6efd !important;
+            text-decoration: none !important;
+            cursor: pointer !important;
+        }
+        .references-section a:hover {
+            text-decoration: underline !important;
+        }
+        /* Make sure links are visible in the article */
+        .article-content a {
+            color: #0d6efd !important;
+            text-decoration: none !important;
+            cursor: pointer !important;
+        }
+        .article-content a:hover {
+            text-decoration: underline !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Co-Storm AI Research</h1>
+            <p>Collaborative AI-powered research assistant</p>
+        </div>
+        
+        <!-- Topic Input Form -->
+        <div id="topic-form">
+            <h2 class="text-center mb-4">Start Your Research</h2>
+            <div class="mb-3">
+                <label for="topic-input" class="form-label">Enter a research topic:</label>
+                <input type="text" class="form-control" id="topic-input" placeholder="e.g., Climate change impacts on agriculture">
+            </div>
+            <div class="d-grid">
+                <button class="btn btn-primary" id="start-btn">Start Research</button>
+            </div>
+            <div class="research-info mt-3">
+                <p>The Co-Storm algorithm will guide you through an interactive research process, asking questions to refine the topic and gather information.</p>
+            </div>
+        </div>
+        
+        <!-- Chat Interface -->
+        <div class="chat-interface">
+            <div id="current-topic" class="alert alert-info text-center"></div>
+            
+            <div class="chat-container" id="chat-container">
+                <!-- Messages will be added here -->
+            </div>
+            
+            <div class="typing-indicator" id="typing-indicator">AI is waiting for your response...</div>
+            
+            <div class="input-group">
+                <input type="text" class="form-control" id="message-input" placeholder="Type your response...">
+                <button class="btn btn-primary" id="send-btn">
+                    <i class="fas fa-paper-plane"></i> Send
+                </button>
+            </div>
+            
+            <div class="loading" id="loading" style="display: none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Processing your research...</p>
+            </div>
+        </div>
+        
+        <!-- Article Container -->
+        <div class="article-container" id="article-container">
+            <h2 class="text-center mb-4">Research Article</h2>
+            <div class="article-content markdown" id="article-content"></div>
+            <div class="d-grid gap-2 mt-4">
+                <button class="btn btn-success" id="download-btn">Download as Markdown</button>
+                <button class="btn btn-primary" id="new-research-btn">Start New Research</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const socket = io();
+            
+            // DOM elements
+            const topicForm = document.getElementById('topic-form');
+            const chatInterface = document.querySelector('.chat-interface');
+            const articleContainer = document.getElementById('article-container');
+            const chatContainer = document.getElementById('chat-container');
+            const messageInput = document.getElementById('message-input');
+            const sendBtn = document.getElementById('send-btn');
+            const startBtn = document.getElementById('start-btn');
+            const topicInput = document.getElementById('topic-input');
+            const currentTopic = document.getElementById('current-topic');
+            const articleContent = document.getElementById('article-content');
+            const downloadBtn = document.getElementById('download-btn');
+            const newResearchBtn = document.getElementById('new-research-btn');
+            const loading = document.getElementById('loading');
+            const typingIndicator = document.getElementById('typing-indicator');
+            
+            // Typing detection variables
+            let typingTimer;
+            const doneTypingInterval = 1000; // Time in ms (1 second)
+            let isTyping = false;
+            
+            // Configure marked.js to allow HTML
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                headerIds: true,
+                sanitize: false  // Allow HTML in markdown
+            });
+            
+            // Helper function to safely parse HTML content
+            function parseHTMLContent(content) {
+                // Create a temporary div to parse the HTML content
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = content;
+                return tempDiv.innerHTML;
+            }
+            
+            // Socket event handlers
+            socket.on('connect', function() {
+                console.log('Connected to server');
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('Disconnected from server');
+            });
+            
+            socket.on('message', function(data) {
+                addMessage(data.role, data.content);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                
+                // Show typing indicator when AI is waiting for human response
+                if (data.role !== 'user' && data.role !== 'system') {
+                    typingIndicator.style.display = 'block';
+                }
+            });
+            
+            socket.on('error', function(data) {
+                alert(data.message);
+            });
+            
+            socket.on('research_started', function(data) {
+                topicForm.style.display = 'none';
+                chatInterface.style.display = 'block';
+                currentTopic.textContent = `Research Topic: ${data.topic}`;
+                loading.style.display = 'block';
+            });
+            
+            socket.on('final_article', function(data) {
+                loading.style.display = 'none';
+                chatInterface.style.display = 'none';
+                articleContainer.style.display = 'block';
+                typingIndicator.style.display = 'none';
+                
+                console.log("Received final article");
+                console.log("Content type:", typeof data.content);
+                console.log("Content sample:", data.content.substring(0, 200));
+                
+                // Use the HTML content directly
+                articleContent.innerHTML = data.content;
+                
+                // Apply reference section styling
+                const referencesSection = articleContent.querySelector('h1:last-of-type');
+                if (referencesSection && referencesSection.textContent === 'References') {
+                    console.log("Found References section, applying styling");
+                    const referencesSectionParent = referencesSection.parentElement || articleContent;
+                    referencesSectionParent.classList.add('references-section');
+                } else {
+                    console.log("References section not found");
+                }
+                
+                // Make sure all links are clickable
+                const links = articleContent.querySelectorAll('a');
+                console.log(`Found ${links.length} links in the article`);
+                links.forEach(link => {
+                    link.setAttribute('target', '_blank');
+                    console.log(`Link: ${link.textContent} -> ${link.getAttribute('href')}`);
+                });
+                
+                // Store the raw markdown for download
+                articleContent.setAttribute('data-markdown', data.markdown || data.content);
+            });
+            
+            // Button event handlers
+            startBtn.addEventListener('click', function() {
+                const topic = topicInput.value.trim();
+                if (topic) {
+                    socket.emit('start_research', { topic: topic });
+                } else {
+                    alert('Please enter a research topic');
+                }
+            });
+            
+            sendBtn.addEventListener('click', sendMessage);
+            
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Typing detection
+            messageInput.addEventListener('keyup', function() {
+                clearTimeout(typingTimer);
+                
+                if (messageInput.value) {
+                    if (!isTyping) {
+                        isTyping = true;
+                        socket.emit('typing_started');
+                    }
+                    
+                    typingTimer = setTimeout(function() {
+                        if (isTyping) {
+                            isTyping = false;
+                            socket.emit('typing_stopped');
+                        }
+                    }, doneTypingInterval);
+                } else {
+                    isTyping = false;
+                    socket.emit('typing_stopped');
+                }
+            });
+            
+            messageInput.addEventListener('keydown', function() {
+                clearTimeout(typingTimer);
+            });
+            
+            messageInput.addEventListener('focus', function() {
+                // Hide typing indicator when user is about to respond
+                typingIndicator.style.display = 'none';
+            });
+            
+            downloadBtn.addEventListener('click', function() {
+                const markdown = articleContent.getAttribute('data-markdown');
+                const blob = new Blob([markdown], { type: 'text/markdown' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'research_article.md';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+            
+            newResearchBtn.addEventListener('click', function() {
+                articleContainer.style.display = 'none';
+                topicForm.style.display = 'block';
+                topicInput.value = '';
+                chatContainer.innerHTML = '';
+            });
+            
+            // Helper functions
+            function sendMessage() {
+                const message = messageInput.value.trim();
+                if (message) {
+                    // Reset typing state
+                    isTyping = false;
+                    socket.emit('typing_stopped');
+                    
+                    // Send message
+                    socket.emit('send_message', { message: message });
+                    messageInput.value = '';
+                    
+                    // Hide typing indicator
+                    typingIndicator.style.display = 'none';
+                }
+            }
+            
+            function addMessage(role, content) {
+                const messageDiv = document.createElement('div');
+                
+                if (role === 'user') {
+                    messageDiv.className = 'message user-message';
+                } else if (role === 'system') {
+                    messageDiv.className = 'message system-message';
+                } else {
+                    messageDiv.className = 'message ai-message';
+                    
+                    // Add role label for AI messages
+                    const roleSpan = document.createElement('div');
+                    roleSpan.className = 'message-role';
+                    roleSpan.textContent = role;
+                    messageDiv.appendChild(roleSpan);
+                }
+                
+                const contentP = document.createElement('div');
+                contentP.innerHTML = content.replace(/\n/g, '<br>');
+                messageDiv.appendChild(contentP);
+                
+                chatContainer.appendChild(messageDiv);
+                
+                // Hide loading indicator after first AI message
+                loading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html> 
