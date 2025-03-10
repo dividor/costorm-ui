@@ -18,25 +18,9 @@ This web application provides an interface for the [Co-Storm AI research algorit
 - Real-time updates during the research process
 - Status bar with visual feedback during long-running operations
 
-## Code Standards and Documentation
-
-This project follows the [PEP 8](https://peps.python.org/pep-0008/) style guide for Python code. All functions and classes include comprehensive docstrings that follow the Google style format, providing:
-
-- Clear descriptions of functionality
-- Parameter documentation with types and descriptions
-- Return value documentation
-- Usage notes and examples where appropriate
-
-The codebase is structured to be maintainable and readable, with:
-
-- Consistent naming conventions
-- Logical organization of functions and classes
-- Appropriate comments for complex logic
-- Clear separation of concerns
-
 ## Prerequisites
 
-- Python 3.8 or higher
+- [miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install) 
 - OpenAI API key
 - A search engine API key (Serper, Bing, or Tavily)
 
@@ -48,7 +32,7 @@ The codebase is structured to be maintainable and readable, with:
    cd costorm-ui
    ```
 
-2. Set up an environment (assuming you have [miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install) installed)...
+2. Set up an environment ...
 
 ```
 conda create -n storm python=3.11
