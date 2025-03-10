@@ -320,6 +320,15 @@
             margin-left: 0;
             color: #666;
         }
+        .article-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #eaeaea;
+            text-align: center;
+        }
         #current-topic {
             background-color: #f1f8ff;
             color: #0366d6;
@@ -424,6 +433,11 @@
                 <button class="btn btn-outline-secondary btn-sm" id="show-discussion-btn">
                     <i class="fas fa-comments me-1"></i> See experts discussion
                 </button>
+            </div>
+            
+            <!-- Topic display - will be shown at the top of the article page -->
+            <div id="article-topic" class="alert alert-info mb-4 text-center" style="display: none;">
+                <strong>Topic:</strong> <span id="article-topic-text"></span>
             </div>
             
             <div class="discussion-container" id="discussion-container">
@@ -542,6 +556,14 @@
                 chatInterface.style.display = 'none';
                 articleContainer.style.display = 'block';
                 statusBar.style.display = 'none';
+                
+                // Display the research topic at the top of the article page
+                if (data.topic) {
+                    const articleTopic = document.getElementById('article-topic');
+                    const articleTopicText = document.getElementById('article-topic-text');
+                    articleTopicText.textContent = data.topic;
+                    articleTopic.style.display = 'block';
+                }
                 
                 // Clone chat messages to discussion container
                 const discussionContent = document.querySelector('.discussion-content');

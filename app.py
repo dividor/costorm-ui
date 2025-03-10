@@ -256,6 +256,9 @@ def process_citations(article, instance_dump):
     # Create HTML version with clickable links
     html_article = article
     
+    # Create a separate markdown version that will have proper markdown links
+    markdown_article = article
+    
     # Replace citation markers with links in HTML version
     def replace_citation_html(match):
         citation_id = match.group(1)
@@ -271,13 +274,37 @@ def process_citations(article, instance_dump):
         print(f"Citation [{citation_id}] not found in citations dictionary")
         return match.group(0)
     
+    # Replace citation markers with markdown links in markdown version
+    def replace_citation_markdown(match):
+        citation_id = match.group(1)
+        # Try both the original citation_id and as a string
+        if citation_id in citations:
+            print(f"Replacing markdown citation [{citation_id}] with link to {citations[citation_id]['url']}")
+            # Format: [text](url) - standard markdown link format
+            return f'[[{citation_id}]]({citations[citation_id]["url"]})'
+        # Try without leading zeros if it's a number
+        elif citation_id.lstrip('0') in citations:
+            clean_id = citation_id.lstrip('0')
+            print(f"Replacing markdown citation [{citation_id}] with link to {citations[clean_id]['url']} (cleaned ID: {clean_id})")
+            return f'[[{citation_id}]]({citations[clean_id]["url"]})'
+        print(f"Markdown citation [{citation_id}] not found in citations dictionary")
+        return match.group(0)
+    
     # Count citations in the article
     citation_matches = re.findall(r'\[(\d+)\]', html_article)
     print(f"Found {len(citation_matches)} citation markers in the article")
     for match in citation_matches[:10]:  # Print first 10 for debugging
         print(f"Citation marker: [{match}]")
     
+    # Process HTML version
     html_article = re.sub(r'\[(\d+)\]', replace_citation_html, html_article)
+    
+    # Process Markdown version - ensure we're capturing all citation markers
+    markdown_article = re.sub(r'\[(\d+)\]', replace_citation_markdown, markdown_article)
+    
+    # Debug: Check if markdown citations were properly replaced
+    markdown_citation_count = len(re.findall(r'\[\[(\d+)\]\]\(http', markdown_article))
+    print(f"Replaced {markdown_citation_count} citation markers in markdown version")
     
     # Add references section to both versions
     if citations:
@@ -288,15 +315,15 @@ def process_citations(article, instance_dump):
             html_references += f'{citation_id}. <a href="{citations[citation_id]["url"]}" target="_blank" rel="noopener noreferrer" class="citation-link">{citations[citation_id]["title"]}</a>\n'
         html_article += html_references
         
-        # Plain markdown version with URLs
+        # Markdown version with proper markdown links
         markdown_references = "\n\n# References\n\n"
         for citation_id in sorted(citations.keys(), key=lambda x: int(str(x)) if str(x).isdigit() else float('inf')):
             markdown_references += f'{citation_id}. [{citations[citation_id]["title"]}]({citations[citation_id]["url"]})\n'
-        article += markdown_references
+        markdown_article += markdown_references
     else:
         print("No citations found, skipping references section")
     
-    # Ensure proper Markdown formatting for headers
+    # Ensure proper Markdown formatting for headers in HTML version
     # This will help the frontend render the Markdown correctly
     html_article = re.sub(r'^# (.+)$', r'<h1>\1</h1>', html_article, flags=re.MULTILINE)
     html_article = re.sub(r'^## (.+)$', r'<h2>\1</h2>', html_article, flags=re.MULTILINE)
@@ -318,7 +345,7 @@ def process_citations(article, instance_dump):
     print("Citation processing complete")
     return {
         "html": html_article,
-        "markdown": article
+        "markdown": markdown_article  # Return the properly formatted markdown version
     }
 
 def debug_instance_dump(instance_dump, max_depth=2, current_depth=0, path=""):
@@ -544,14 +571,19 @@ def run_costorm_session(session_id, topic):
         processed_article = process_citations(article, instance_copy)
         print("===== CITATION PROCESSING COMPLETE =====\n\n")
         
+        # Add the topic as the title to both HTML and markdown versions
+        html_with_title = f"<h1 class='article-title'>{topic}</h1>\n\n" + processed_article["html"]
+        markdown_with_title = f"# {topic}\n\n" + processed_article["markdown"]
+        
         # Save the markdown version to file
         with open(os.path.join(output_dir, "report.md"), "w") as f:
-            f.write(processed_article["markdown"])
+            f.write(markdown_with_title)
         
         # Send final article to client
         socketio.emit('final_article', {
-            'content': processed_article["html"],
-            'markdown': processed_article["markdown"]
+            'content': html_with_title,
+            'markdown': markdown_with_title,
+            'topic': topic  # Include the research topic
         }, room=session_id)
         
         # Mark session as completed
