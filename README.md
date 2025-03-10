@@ -1,8 +1,12 @@
-**Note**: This application was created using only AI, as part of [this blogpost]()
+**Note**: This application was created using mostly AI prompting in Cursor, as part of [this blogpost]()
 
-# Co-STORM AI Research Web Application
+# Co-STORM AI Research Web Interface
 
-This web application provides a user-friendly interface for the [Co-Storm AI research algorithm](). It allows users to input a research topic and engage in an interactive conversation with the AI to refine the research and generate a comprehensive article with citations.
+This web application provides an interface for the [Co-Storm AI research algorithm](https://storm.genie.stanford.edu/article/do-polls-predict-elections%3F-135449). It allows users to input a research topic and engage in an interactive conversation with the AI to refine the research and generate a comprehensive article with citations.
+
+![Start](results/start.png)
+![In Action](results/in-action.png)
+![Final](results/final.png)
 
 ## Features
 
@@ -55,9 +59,13 @@ pip install -r requirements.txt
    http://localhost:5001
    ```
 
-3. Enter a research topic in the input field and click "Start Research"
+3. Enter a research topic in the input field and click "Start Research". An example research topic might be "humanitarian response place name disambiguation"
 
-4. Engage with the AI in the chat interface to refine your research topic
+4. Engage with the AI in the chat interface to refine your research topic. You can enter your contribution any time. 
+
+A followup to the example topic, when the AI asks about technologies, could be ...
+
+"A blockchain (e.g., Ethereum or Hyperledger Fabric) can host an authoritative, consensus-based registry of geospatial identifiers, creating an immutable ledger of disambiguated place references. A decentralized ledger for geographic disambiguation, combined with off-chain spatial indexes."
 
 5. Once the research is complete, the application will display the final article with citations
 
@@ -98,7 +106,6 @@ The application features typing detection, which will pause the AI's responses a
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-
 ## Running the Co-STORM sample script
 
 If you are interested in running the sample Co-STORM script `run_costorm_gpt.py` used as the starting point for AI to generate this app (as found on in the Co-STORM repo examples, adjusted with a minor bug fix) ...
@@ -117,14 +124,3 @@ If you are interested in running the sample Co-STORM script `run_costorm_gpt.py`
 
 You can then run the script with `python run_costorm_gpt.py --output-dir ./results --enable_log_print --retriever serper`
 
-
-
-
-python run_costorm_gpt.py --output-dir ./results --enable_log_print --retriever serper
-
-
-humanitarian response place name disambiguation
-
-A blockchain (e.g., Ethereum or Hyperledger Fabric) can host an authoritative, consensus-based registry of geospatial identifiers, creating an immutable ledger of disambiguated place references. A decentralized ledger for geographic disambiguation, combined with off-chain spatial indexes.
-
-Technical and Infrastructure Challenges, data volumes, Data Integration and Standardization
