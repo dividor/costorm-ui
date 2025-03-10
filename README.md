@@ -1,7 +1,4 @@
-<div style="padding: 15px; border-radius: 5px; background: #d9edf7; color: #31708f; border-left: 5px solid #31708f;">
-  <strong>ℹ️ Info:</strong> This application was created using mostly AI prompting in Cursor, as part of [this blogpost]()
-</div>
-
+**Note**: This application was created using mostly AI prompting in Cursor, as part of [this blogpost]()
 
 # Co-STORM AI Research Web Interface
 
