@@ -28,7 +28,7 @@ This web application provides an interface for the [Co-Storm AI research algorit
 
 1. Clone this repository:
    ```
-   git clone <repository-url>
+   git clone https://github.com/dividor/costorm-ui.git
    cd costorm-ui
    ```
 
