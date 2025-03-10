@@ -39,6 +39,33 @@ from knowledge_storm.utils import load_api_key
 
 
 def main(args):
+    """
+    Main function to run the Co-Storm algorithm with the specified arguments.
+    
+    This function initializes the Co-Storm environment, configures the language models,
+    sets up the retrieval module, and executes the Co-Storm algorithm to generate
+    a research article on the specified topic.
+    
+    Args:
+        args (Namespace): Command-line arguments containing configuration parameters.
+            Expected attributes:
+            - topic (str): The research topic to research.
+            - output_dir (str): Directory to save output files.
+            - num_turns (int): Number of conversation turns.
+            - retrieve_top_k (int): Number of top search results to retrieve.
+            - max_search_queries (int): Maximum number of search queries.
+            - max_search_thread (int): Maximum number of search threads.
+            - max_search_queries_per_turn (int): Maximum search queries per turn.
+            - warmstart_max_num_experts (int): Maximum number of experts for warm start.
+            - warmstart_max_turn_per_experts (int): Maximum turns per expert for warm start.
+            - warmstart_max_thread (int): Maximum threads for warm start.
+            - max_thread_num (int): Maximum number of threads.
+            - max_num_round_table_experts (int): Maximum number of round table experts.
+            
+    Note:
+        This function requires environment variables to be set for API keys and
+        configuration. These can be loaded from a secrets.toml file.
+    """
     load_api_key(toml_file_path="secrets.toml")
     lm_config: CollaborativeStormLMConfigs = CollaborativeStormLMConfigs()
     openai_kwargs = (
@@ -214,21 +241,30 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    # global arguments
+    """
+    Entry point for the Co-Storm script.
+    
+    This section parses command-line arguments and passes them to the main function.
+    """
+    parser = ArgumentParser(description="Run the Co-Storm algorithm for AI-powered research")
+    
+    # Output directory configuration
     parser.add_argument(
         "--output-dir",
         type=str,
         default="./results/co-storm",
         help="Directory to store the outputs.",
     )
+    
+    # Retrieval engine selection
     parser.add_argument(
         "--retriever",
         type=str,
         choices=["bing", "you", "brave", "serper", "duckduckgo", "tavily", "searxng"],
         help="The search engine API to use for retrieving information.",
     )
-    # hyperparameters for co-storm
+    
+    # Co-Storm algorithm hyperparameters
     parser.add_argument(
         "--retrieve_top_k",
         type=int,
@@ -259,6 +295,8 @@ if __name__ == "__main__":
         default=3,
         help="Maximum number of search queries to consider in each turn.",
     )
+    
+    # Warm start configuration
     parser.add_argument(
         "--warmstart_max_num_experts",
         type=int,
@@ -277,6 +315,8 @@ if __name__ == "__main__":
         default=3,
         help="Max number of threads for parallel perspective-guided QA during warm start.",
     )
+    
+    # Threading and performance configuration
     parser.add_argument(
         "--max_thread_num",
         type=int,
@@ -307,11 +347,13 @@ if __name__ == "__main__":
         help="Trigger node expansion for nodes that contain more than N snippets.",
     )
 
-    # Boolean flags
+    # Logging configuration
     parser.add_argument(
         "--enable_log_print",
         action="store_true",
         help="If set, enable console log print.",
     )
-
-    main(parser.parse_args())
+    
+    # Parse arguments and run the main function
+    args = parser.parse_args()
+    main(args)

@@ -163,7 +163,28 @@ def create_costorm_runner(topic):
     return costorm_runner
 
 def process_citations(article, instance_dump):
-    """Process citations in the article and add a references section."""
+    """Process citations in the article and add a references section.
+    
+    This function extracts citation information from the instance_dump,
+    replaces citation markers in the article with clickable links,
+    and adds a references section at the end of the article.
+    
+    Args:
+        article (str): The original article text with citation markers.
+        instance_dump (dict): The instance dump containing citation information.
+            Expected to have a structure with knowledge_base.info_uuid_to_info_dict
+            containing citation details.
+            
+    Returns:
+        dict: A dictionary containing two versions of the processed article:
+            - html (str): HTML version with clickable links and proper formatting.
+            - markdown (str): Markdown version with proper citation links.
+            
+    Note:
+        Citation markers in the article should be in the format [n] where n is a number.
+        The function will attempt to match these markers with citation information
+        from the instance_dump and replace them with clickable links.
+    """
     print("Starting citation processing...")
     
     # Extract citation information from instance_dump
@@ -257,7 +278,22 @@ def process_citations(article, instance_dump):
     }
 
 def debug_instance_dump(instance_dump, max_depth=2, current_depth=0, path=""):
-    """Debug function to print the structure of the instance_dump.json file."""
+    """Debug function to print the structure of the instance_dump.json file.
+    
+    This function recursively traverses the instance_dump dictionary and prints
+    its structure up to a specified maximum depth. It's useful for understanding
+    the structure of complex nested dictionaries.
+    
+    Args:
+        instance_dump (dict): The instance dump dictionary to debug.
+        max_depth (int, optional): Maximum depth to traverse. Defaults to 2.
+        current_depth (int, optional): Current depth in the recursion. Defaults to 0.
+        path (str, optional): Current path in the dictionary. Defaults to "".
+        
+    Note:
+        This is a helper function for development and debugging purposes.
+        It prints the structure to the console and does not return any value.
+    """
     if current_depth > max_depth:
         return
     
@@ -688,7 +724,17 @@ def handle_disconnect():
 
 @socketio.on('start_research')
 def handle_start_research(data):
-    """Start a new research session."""
+    """Start a new research session with the Co-Storm algorithm.
+    
+    This function initializes a new research session for the given topic,
+    creates a separate thread to run the Co-Storm algorithm, and notifies
+    the client that the research has started.
+    
+    Args:
+        data (dict): A dictionary containing the research topic.
+            Expected keys:
+            - topic (str): The research topic to explore.
+    """
     session_id = request.sid
     topic = data.get('topic', '')
     
@@ -715,7 +761,17 @@ def handle_start_research(data):
 
 @socketio.on('send_message')
 def handle_send_message(data):
-    """Handle user message."""
+    """Handle a user message in an active research session.
+    
+    This function processes a message sent by the user during an active
+    research session, stores it for processing by the Co-Storm algorithm,
+    and echoes it back to the client.
+    
+    Args:
+        data (dict): A dictionary containing the user message.
+            Expected keys:
+            - message (str): The message content from the user.
+    """
     session_id = request.sid
     message = data.get('message', '')
     
@@ -734,7 +790,11 @@ def handle_send_message(data):
 
 @socketio.on('typing_started')
 def handle_typing_started():
-    """Handle user typing notification."""
+    """Handle notification that the user has started typing.
+    
+    This function updates the session state to indicate that the user
+    is currently typing, which can be used to delay AI responses.
+    """
     session_id = request.sid
     
     if session_id in active_sessions and not active_sessions[session_id]["completed"]:
@@ -742,7 +802,11 @@ def handle_typing_started():
 
 @socketio.on('typing_stopped')
 def handle_typing_stopped():
-    """Handle user stopped typing notification."""
+    """Handle notification that the user has stopped typing.
+    
+    This function updates the session state to indicate that the user
+    has stopped typing, allowing the AI to continue with its responses.
+    """
     session_id = request.sid
     
     if session_id in active_sessions and not active_sessions[session_id]["completed"]:

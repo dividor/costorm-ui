@@ -16,6 +16,23 @@ This web application provides an interface for the [Co-Storm AI research algorit
 - Final output as a well-structured article with citations
 - Ability to download the research article as a Markdown file
 - Real-time updates during the research process
+- Status bar with visual feedback during long-running operations
+
+## Code Standards and Documentation
+
+This project follows the [PEP 8](https://peps.python.org/pep-0008/) style guide for Python code. All functions and classes include comprehensive docstrings that follow the Google style format, providing:
+
+- Clear descriptions of functionality
+- Parameter documentation with types and descriptions
+- Return value documentation
+- Usage notes and examples where appropriate
+
+The codebase is structured to be maintainable and readable, with:
+
+- Consistent naming conventions
+- Logical organization of functions and classes
+- Appropriate comments for complex logic
+- Clear separation of concerns
 
 ## Prerequisites
 
@@ -73,34 +90,30 @@ A followup to the example topic, when the AI asks about technologies, could be .
 
 ## Environment Variables
 
-You can configure the application using the following environment variables:
+The application uses environment variables for configuration. These can be set in a `.env` file in the root directory. A sample `.env.example` file is provided as a template.
 
-- `OPENAI_API_KEY`: Your OpenAI API key
-- `OPENAI_API_TYPE`: API type (openai or azure)
-- `RETRIEVER_TYPE`: Search engine to use (serper, bing, or tavily)
-- `SERPER_API_KEY`: Serper API key (if using Serper)
-- `BING_SEARCH_API_KEY`: Bing Search API key (if using Bing)
-- `TAVILY_API_KEY`: Tavily API key (if using Tavily)
-- `HUMAN_WAIT_TIME`: Number of seconds to wait for human input after each AI message (default: 10)
-- `NUM_TURNS`: Number of conversation turns in the research process (default: 10)
+Key environment variables include:
 
-### Co-Storm Algorithm Parameters
-
-The following parameters control the behavior of the Co-Storm algorithm:
-
-- `RETRIEVE_TOP_K`: Number of search results to retrieve (default: 10)
-- `MAX_SEARCH_QUERIES`: Maximum number of search queries (default: 2)
-- `MAX_SEARCH_THREAD`: Maximum number of search threads (default: 5)
-- `MAX_SEARCH_QUERIES_PER_TURN`: Maximum search queries per turn (default: 3)
-- `WARMSTART_MAX_NUM_EXPERTS`: Maximum number of experts in warmstart (default: 3)
-- `WARMSTART_MAX_TURN_PER_EXPERTS`: Maximum turns per expert in warmstart (default: 2)
-- `WARMSTART_MAX_THREAD`: Maximum threads in warmstart (default: 3)
-- `MAX_THREAD_NUM`: Maximum number of threads (default: 10)
-- `MAX_NUM_ROUND_TABLE_EXPERTS`: Maximum number of round table experts (default: 2)
-- `MODERATOR_OVERRIDE_N_CONSECUTIVE_ANSWERING_TURN`: Number of consecutive turns before moderator override (default: 3)
-- `NODE_EXPANSION_TRIGGER_COUNT`: Node expansion trigger count (default: 10)
-
-The application features typing detection, which will pause the AI's responses as long as the user is typing, ensuring a more natural conversation flow.
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_API_KEY` | Your OpenAI API key | None (Required) |
+| `RETRIEVER_TYPE` | Search engine to use (serper, bing, tavily) | serper |
+| `SERPER_API_KEY` | Serper API key (if using Serper) | None |
+| `BING_SEARCH_API_KEY` | Bing Search API key (if using Bing) | None |
+| `TAVILY_API_KEY` | Tavily API key (if using Tavily) | None |
+| `NUM_TURNS` | Number of conversation turns | 10 |
+| `HUMAN_WAIT_TIME` | Seconds to wait for human input | 10 |
+| `RETRIEVE_TOP_K` | Number of top search results to retrieve | 10 |
+| `MAX_SEARCH_QUERIES` | Maximum number of search queries | 2 |
+| `MAX_SEARCH_THREAD` | Maximum number of search threads | 5 |
+| `MAX_SEARCH_QUERIES_PER_TURN` | Maximum search queries per turn | 3 |
+| `WARMSTART_MAX_NUM_EXPERTS` | Maximum number of experts for warm start | 3 |
+| `WARMSTART_MAX_TURN_PER_EXPERTS` | Maximum turns per expert for warm start | 2 |
+| `WARMSTART_MAX_THREAD` | Maximum threads for warm start | 3 |
+| `MAX_THREAD_NUM` | Maximum number of threads | 10 |
+| `MAX_NUM_ROUND_TABLE_EXPERTS` | Maximum number of round table experts | 2 |
+| `MODERATOR_OVERRIDE_N_CONSECUTIVE_ANSWERING_TURN` | Consecutive expert turns before moderator override | 3 |
+| `NODE_EXPANSION_TRIGGER_COUNT` | Trigger node expansion for nodes with more than N snippets | 10 |
 
 ## License
 
