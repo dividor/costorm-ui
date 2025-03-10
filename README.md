@@ -7,6 +7,7 @@ This web application provides an interface for the [Co-Storm AI research algorit
 ![Start](media/start.png)
 ![In Action](media/in-action.png)
 ![Final](media/final.png)
+![Download](media/download.png)
 
 ## Features
 
