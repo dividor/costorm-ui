@@ -382,6 +382,53 @@
         #show-discussion-btn:hover {
             background-color: #e9ecef;
         }
+        /* Table of Contents styles */
+        .toc-container {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin-bottom: 30px;
+            max-width: 100%;
+        }
+        .toc-container h2 {
+            font-size: 1.5rem;
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 8px;
+        }
+        .toc-list {
+            list-style-type: none;
+            padding-left: 0;
+            margin-bottom: 0;
+        }
+        .toc-item {
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+        .toc-item a {
+            color: #0d6efd;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .toc-item a:hover {
+            color: #0a58ca;
+            text-decoration: underline;
+        }
+        .toc-level-3 {
+            padding-left: 20px;
+        }
+        .toc-level-4 {
+            padding-left: 40px;
+        }
+        .toc-level-5 {
+            padding-left: 60px;
+        }
+        .toc-level-6 {
+            padding-left: 80px;
+        }
     </style>
 </head>
 <body>
@@ -454,9 +501,18 @@
             
             <div class="article-content markdown" id="article-content"></div>
             <div class="d-grid gap-2 mt-5">
-                <button class="btn btn-success" id="download-btn">
-                    <i class="fas fa-download"></i> Download as Markdown
-                </button>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <button class="btn btn-success w-100" id="download-btn">
+                            <i class="fas fa-download"></i> Download as Markdown
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-info w-100" id="download-pdf-btn">
+                            <i class="fas fa-file-pdf"></i> Download as PDF
+                        </button>
+                    </div>
+                </div>
                 <button class="btn btn-primary" id="new-research-btn">
                     <i class="fas fa-plus-circle"></i> Start New Research
                 </button>
@@ -467,6 +523,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -484,6 +541,7 @@
             const currentTopic = document.getElementById('current-topic');
             const articleContent = document.getElementById('article-content');
             const downloadBtn = document.getElementById('download-btn');
+            const downloadPdfBtn = document.getElementById('download-pdf-btn');
             const newResearchBtn = document.getElementById('new-research-btn');
             const statusBar = document.getElementById('status-bar');
             const showDiscussionBtn = document.getElementById('show-discussion-btn');
@@ -660,6 +718,38 @@
                 
                 // Store the raw markdown for download
                 articleContent.setAttribute('data-markdown', data.markdown || data.content);
+                
+                // After the article content is loaded and processed
+                setTimeout(() => {
+                    // Fix TOC links in the browser
+                    const tocLinks = document.querySelectorAll('.toc-item a');
+                    tocLinks.forEach(link => {
+                        const href = link.getAttribute('href');
+                        if (href && href.startsWith('#')) {
+                            // Remove target="_blank" to prevent opening in new tab
+                            link.removeAttribute('target');
+                            link.removeAttribute('rel');
+                            
+                            // Add onclick to handle scrolling
+                            link.onclick = function(e) {
+                                e.preventDefault();
+                                const targetId = href.substring(1);
+                                const targetElement = document.getElementById(targetId);
+                                if (targetElement) {
+                                    targetElement.scrollIntoView({behavior: 'smooth'});
+                                }
+                            };
+                        }
+                    });
+                    
+                    // Add IDs to headings if they don't have them
+                    const headings = document.querySelectorAll('.article-content h1, .article-content h2, .article-content h3, .article-content h4, .article-content h5, .article-content h6');
+                    headings.forEach(heading => {
+                        if (!heading.id) {
+                            heading.id = heading.textContent.trim().toLowerCase().replace(/[^\w]+/g, '-');
+                        }
+                    });
+                }, 500);
             });
             
             // Button event handlers
@@ -716,6 +806,214 @@
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
+            });
+            
+            downloadPdfBtn.addEventListener('click', function() {
+                // Show loading indicator first
+                const loadingIndicator = document.createElement('div');
+                loadingIndicator.className = 'alert alert-info text-center';
+                loadingIndicator.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Generating PDF...';
+                articleContainer.prepend(loadingIndicator);
+                
+                // Use setTimeout to allow the loading indicator to render
+                setTimeout(() => {
+                    try {
+                        // Create a clone of the article content to modify for PDF
+                        const pdfContent = document.createElement('div');
+                        
+                        // Get the topic to use as the PDF title
+                        const topicText = document.getElementById('article-topic-text').textContent;
+                        
+                        // Create a proper structure for the PDF with title
+                        pdfContent.innerHTML = `
+                            <div class="pdf-container" style="font-family: 'Arial', sans-serif; color: #333; line-height: 1.6; background-color: white; padding: 0; margin: 0;">
+                                <div style="page-break-after: avoid; page-break-inside: avoid; margin: 0; padding: 0;">
+                                    <h1 style="font-size: 24px; text-align: center; margin-bottom: 20px; color: #2c3e50; padding-bottom: 10px; border-bottom: 1px solid #eee;">${topicText}</h1>
+                                </div>
+                                ${articleContent.innerHTML}
+                            </div>
+                        `;
+                        
+                        // Remove any elements that might cause layout issues
+                        const elementsToRemove = pdfContent.querySelectorAll('.article-title');
+                        elementsToRemove.forEach(el => el.remove());
+                        
+                        // Fix TOC container to avoid blank page
+                        const tocContainer = pdfContent.querySelector('.toc-container');
+                        if (tocContainer) {
+                            tocContainer.style.backgroundColor = 'white';
+                            tocContainer.style.pageBreakAfter = 'avoid';
+                            tocContainer.style.pageBreakBefore = 'avoid';
+                            tocContainer.style.marginBottom = '15px';
+                            tocContainer.style.breakInside = 'avoid';
+                            
+                            // Move TOC right after the title
+                            const mainTitle = pdfContent.querySelector('.pdf-container > div');
+                            if (mainTitle) {
+                                mainTitle.appendChild(tocContainer);
+                            }
+                        }
+                        
+                        // Ensure all headings have IDs for TOC links
+                        const allHeadings = pdfContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
+                        allHeadings.forEach(heading => {
+                            if (!heading.id) {
+                                heading.id = heading.textContent.trim().toLowerCase().replace(/[^\w]+/g, '-');
+                            }
+                        });
+                        
+                        // Fix TOC links for PDF
+                        const tocLinks = pdfContent.querySelectorAll('.toc-item a');
+                        tocLinks.forEach(link => {
+                            // Get the target heading text
+                            const targetText = link.textContent.trim();
+                            
+                            // Find the corresponding heading in the document
+                            for (const heading of allHeadings) {
+                                if (heading.textContent.trim() === targetText) {
+                                    // Update the link to point to the heading
+                                    link.setAttribute('href', '#' + heading.id);
+                                    
+                                    // Remove target="_blank" to prevent opening in new tab
+                                    link.removeAttribute('target');
+                                    link.removeAttribute('rel');
+                                    break;
+                                }
+                            }
+                        });
+                        
+                        // Prevent page breaks between H1 and H2
+                        const h1Elements = pdfContent.querySelectorAll('h1:not(.pdf-container h1)');
+                        h1Elements.forEach(h1 => {
+                            // Create a section wrapper for each H1
+                            const sectionWrapper = document.createElement('div');
+                            sectionWrapper.className = 'section-wrapper';
+                            sectionWrapper.style.pageBreakBefore = 'always';
+                            
+                            // Insert the wrapper before the H1
+                            h1.parentNode.insertBefore(sectionWrapper, h1);
+                            
+                            // Move the H1 into the wrapper
+                            sectionWrapper.appendChild(h1);
+                            
+                            // Force H1 to stay with at least the next element
+                            h1.style.pageBreakAfter = 'avoid';
+                            h1.style.marginBottom = '10px';
+                            
+                            // Find all siblings until the next H1 and move them into the wrapper
+                            let nextSibling = sectionWrapper.nextSibling;
+                            while (nextSibling && nextSibling.tagName !== 'H1') {
+                                const current = nextSibling;
+                                nextSibling = nextSibling.nextSibling;
+                                
+                                // If it's an H2 right after H1, make sure they stay together
+                                if (current.tagName === 'H2' && sectionWrapper.childNodes.length === 1) {
+                                    current.style.pageBreakBefore = 'avoid';
+                                    current.style.marginTop = '10px';
+                                }
+                                
+                                sectionWrapper.appendChild(current);
+                            }
+                        });
+                        
+                        // Fix spacing between headings with no content between them
+                        const headings = pdfContent.querySelectorAll('h1, h2, h3, h4, h5, h6');
+                        headings.forEach(heading => {
+                            // Check if the next element is also a heading
+                            let nextElement = heading.nextElementSibling;
+                            if (nextElement && /^H[1-6]$/.test(nextElement.tagName)) {
+                                heading.style.marginBottom = '5px';
+                                nextElement.style.marginTop = '10px';
+                            }
+                        });
+                        
+                        // Ensure references section is properly formatted
+                        const referencesHeading = Array.from(pdfContent.querySelectorAll('h1')).find(h1 => 
+                            h1.textContent.trim() === 'References');
+                            
+                        if (referencesHeading) {
+                            // Find the parent section wrapper
+                            let referencesSection = referencesHeading.closest('.section-wrapper');
+                            if (!referencesSection) {
+                                referencesSection = referencesHeading.parentElement;
+                            }
+                            
+                            if (referencesSection) {
+                                referencesSection.classList.add('references-section');
+                                
+                                // Format each paragraph in the references section
+                                const refParagraphs = referencesSection.querySelectorAll('p');
+                                refParagraphs.forEach((p, index) => {
+                                    p.style.display = 'block';
+                                    p.style.marginBottom = '8px';
+                                    p.style.pageBreakInside = 'avoid';
+                                    
+                                    // Add a line break between citations if they're in the same paragraph
+                                    if (p.innerHTML.includes('. http') || p.innerHTML.includes('.</a>')) {
+                                        p.innerHTML = p.innerHTML
+                                            .replace(/\.\s+(https?:\/\/|www\.)/g, '.<br><br>$1')
+                                            .replace(/\.\s*<\/a>\s+/g, '.</a><br><br>');
+                                    }
+                                });
+                            }
+                        }
+                        
+                        // Make sure all links are absolute URLs for PDF
+                        const links = pdfContent.querySelectorAll('a');
+                        links.forEach(link => {
+                            const href = link.getAttribute('href');
+                            // Only modify external links, not TOC links
+                            if (href && !href.startsWith('#') && !href.startsWith('http')) {
+                                link.setAttribute('href', 'https://' + href.replace(/^\/\//, ''));
+                            }
+                        });
+                        
+                        // Configure PDF options with better settings for article content
+                        const opt = {
+                            margin: [20, 20, 20, 20],
+                            filename: `${topicText.substring(0, 30)}_research.pdf`,
+                            image: { type: 'jpeg', quality: 0.98 },
+                            html2canvas: { 
+                                scale: 1.5,
+                                useCORS: true,
+                                letterRendering: true,
+                                scrollY: 0,
+                                backgroundColor: '#ffffff'
+                            },
+                            jsPDF: { 
+                                unit: 'mm', 
+                                format: 'a4', 
+                                orientation: 'portrait',
+                                compress: true
+                            },
+                            pagebreak: { 
+                                mode: ['avoid-all', 'css', 'legacy'],
+                                before: '.section-wrapper:not(:first-child)'  // Add page breaks before each section except the first
+                            }
+                        };
+                        
+                        // Generate the PDF with improved handling
+                        html2pdf()
+                            .from(pdfContent)
+                            .set(opt)
+                            .save()
+                            .then(() => {
+                                // Remove loading indicator when done
+                                loadingIndicator.remove();
+                            })
+                            .catch(error => {
+                                console.error('PDF generation error:', error);
+                                loadingIndicator.className = 'alert alert-danger text-center';
+                                loadingIndicator.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i> Error generating PDF. Please try again.';
+                                setTimeout(() => loadingIndicator.remove(), 3000);
+                            });
+                    } catch (error) {
+                        console.error('Error preparing PDF content:', error);
+                        loadingIndicator.className = 'alert alert-danger text-center';
+                        loadingIndicator.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i> Error generating PDF. Please try again.';
+                        setTimeout(() => loadingIndicator.remove(), 3000);
+                    }
+                }, 100);
             });
             
             newResearchBtn.addEventListener('click', function() {

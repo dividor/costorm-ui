@@ -575,14 +575,32 @@ def run_costorm_session(session_id, topic):
         html_with_title = f"<h1 class='article-title'>{topic}</h1>\n\n" + processed_article["html"]
         markdown_with_title = f"# {topic}\n\n" + processed_article["markdown"]
         
+        # Generate and add table of contents to the markdown version
+        toc = generate_table_of_contents(markdown_with_title)
+        if toc:
+            # Insert TOC after the title
+            title_end_pos = markdown_with_title.find("\n\n") + 2
+            markdown_with_toc = markdown_with_title[:title_end_pos] + toc + markdown_with_title[title_end_pos:]
+        else:
+            markdown_with_toc = markdown_with_title
+            
+        # Generate and add HTML table of contents
+        html_toc = generate_html_table_of_contents(html_with_title)
+        if html_toc:
+            # Insert HTML TOC after the title
+            title_end_pos = html_with_title.find("\n\n") + 2
+            html_with_toc = html_with_title[:title_end_pos] + html_toc + html_with_title[title_end_pos:]
+        else:
+            html_with_toc = html_with_title
+        
         # Save the markdown version to file
         with open(os.path.join(output_dir, "report.md"), "w") as f:
-            f.write(markdown_with_title)
+            f.write(markdown_with_toc)
         
         # Send final article to client
         socketio.emit('final_article', {
-            'content': html_with_title,
-            'markdown': markdown_with_title,
+            'content': html_with_toc,
+            'markdown': markdown_with_toc,
             'topic': topic  # Include the research topic
         }, room=session_id)
         
@@ -773,6 +791,81 @@ class UIStatusCallbackHandler(LocalConsolePrintCallBackHandler):
         """
         self._send_status_update(f"Warming up: {message}")
         super().on_warmstart_update(message, **kwargs)
+
+def generate_table_of_contents(markdown_text):
+    """Generate a table of contents from markdown headings.
+    
+    Args:
+        markdown_text (str): The markdown text to process.
+        
+    Returns:
+        str: A markdown table of contents.
+    """
+    # Find all headings in the markdown text
+    heading_pattern = re.compile(r'^(#{1,6})\s+(.+?)(?:\s+\{#([^}]+)\})?\s*$', re.MULTILINE)
+    headings = heading_pattern.findall(markdown_text)
+    
+    if not headings:
+        return ""
+    
+    toc = ["## Table of Contents\n"]
+    
+    for heading in headings:
+        level = len(heading[0])  # Number of # characters
+        title = heading[1].strip()
+        
+        # Skip the title itself and any TOC heading
+        if level == 1 or title.lower() == "table of contents":
+            continue
+            
+        # Create anchor: lowercase, replace spaces with hyphens, remove special chars
+        anchor = re.sub(r'[^\w\- ]', '', title.lower())
+        anchor = anchor.replace(' ', '-')
+        
+        # Add indentation based on heading level
+        indent = "  " * (level - 2)
+        toc.append(f"{indent}- [{title}](#{anchor})")
+    
+    return "\n".join(toc) + "\n\n"
+
+def generate_html_table_of_contents(html_text):
+    """Generate an HTML table of contents from HTML headings.
+    
+    Args:
+        html_text (str): The HTML text to process.
+        
+    Returns:
+        str: An HTML table of contents.
+    """
+    # Find all headings in the HTML text (h2-h6, skip h1 which is the title)
+    heading_pattern = re.compile(r'<h([2-6])[^>]*>(.*?)</h\1>', re.DOTALL)
+    headings = heading_pattern.findall(html_text)
+    
+    if not headings:
+        return ""
+    
+    toc = ['<div class="toc-container">', '<h2>Table of Contents</h2>', '<ul class="toc-list">']
+    
+    for heading in headings:
+        level = int(heading[0])  # Heading level (2-6)
+        title = re.sub(r'<.*?>', '', heading[1]).strip()  # Remove any HTML tags inside the heading
+        
+        # Skip any TOC heading
+        if title.lower() == "table of contents":
+            continue
+            
+        # Create anchor: lowercase, replace spaces with hyphens, remove special chars
+        anchor = re.sub(r'[^\w\- ]', '', title.lower())
+        anchor = anchor.replace(' ', '-')
+        
+        # Add indentation based on heading level
+        indent = "  " * (level - 2)
+        toc.append(f'{indent}<li class="toc-item toc-level-{level}"><a href="#{anchor}">{title}</a></li>')
+    
+    toc.append('</ul>')
+    toc.append('</div>')
+    
+    return "\n".join(toc)
 
 @app.route('/')
 def index():
