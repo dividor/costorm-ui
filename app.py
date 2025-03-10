@@ -2,12 +2,13 @@ import os
 import json
 import uuid
 import re
-from flask import Flask, render_template, request, jsonify, session
-from flask_socketio import SocketIO
-from dotenv import load_dotenv
 import threading
 import time
 from argparse import Namespace
+
+from flask import Flask, render_template, request, jsonify, session
+from flask_socketio import SocketIO
+from dotenv import load_dotenv
 
 from knowledge_storm.collaborative_storm.engine import (
     CollaborativeStormLMConfigs,
@@ -52,7 +53,22 @@ MODERATOR_OVERRIDE_N_CONSECUTIVE_ANSWERING_TURN = int(os.getenv("MODERATOR_OVERR
 NODE_EXPANSION_TRIGGER_COUNT = int(os.getenv("NODE_EXPANSION_TRIGGER_COUNT", 10))
 
 def create_costorm_runner(topic):
-    """Create and initialize a CoStormRunner instance."""
+    """Create and initialize a CoStormRunner instance.
+    
+    This function sets up a CoStormRunner with appropriate language models,
+    retrieval modules, and configuration settings for the Co-Storm algorithm.
+    
+    Args:
+        topic (str): The research topic to be explored by the Co-Storm algorithm.
+        
+    Returns:
+        CoStormRunner: A fully configured CoStormRunner instance ready to execute
+            the Co-Storm algorithm on the specified topic.
+            
+    Note:
+        The function uses environment variables for API keys and configuration settings.
+        Make sure these are properly set in the .env file before running.
+    """
     lm_config = CollaborativeStormLMConfigs()
     
     # Configure OpenAI settings
@@ -264,7 +280,28 @@ def debug_instance_dump(instance_dump, max_depth=2, current_depth=0, path=""):
         print(f"{indent}Value at {path}: {type(instance_dump).__name__}")
 
 def run_costorm_session(session_id, topic):
-    """Run the Co-Storm algorithm in a separate thread."""
+    """Run the Co-Storm algorithm in a separate thread.
+    
+    This function executes the Co-Storm algorithm for a given research topic,
+    handling the conversation flow, user interactions, and final article generation.
+    It manages the entire research session from initialization to completion.
+    
+    Args:
+        session_id (str): The unique identifier for the client session.
+        topic (str): The research topic to be explored by the Co-Storm algorithm.
+        
+    Note:
+        This function is designed to be run in a separate thread to avoid blocking
+        the main application thread. It communicates with the client through Socket.IO
+        events to provide real-time updates and handle user interactions.
+        
+        The function creates an output directory for the session, initializes the
+        Co-Storm runner with a custom callback handler, and manages the conversation
+        flow until completion or the maximum number of turns is reached.
+        
+        Upon completion, it generates a final research article, processes citations,
+        and saves all relevant data to the output directory.
+    """
     try:
         # Create output directory for this session
         output_dir = f"./results/{session_id}"
@@ -438,101 +475,213 @@ def run_costorm_session(session_id, topic):
 
 # Custom callback handler to update UI status
 class UIStatusCallbackHandler(LocalConsolePrintCallBackHandler):
-    """Callback handler that updates the UI status."""
+    """Callback handler that updates the UI status during Co-Storm execution.
+    
+    This class extends the LocalConsolePrintCallBackHandler to provide real-time
+    status updates to the web UI via Socket.IO events. It overrides various callback
+    methods to send appropriate status messages at different stages of the Co-Storm
+    algorithm execution.
+    
+    Attributes:
+        socketio (SocketIO): The Socket.IO instance used to emit events to clients.
+        session_id (str): The unique identifier for the client session.
+    """
     
     def __init__(self, socketio, session_id):
+        """Initialize the UIStatusCallbackHandler.
+        
+        Args:
+            socketio (SocketIO): The Socket.IO instance used to emit events to clients.
+            session_id (str): The unique identifier for the client session.
+        """
         super().__init__()
         self.socketio = socketio
         self.session_id = session_id
     
     def _send_status_update(self, status):
-        """Send status update to the UI."""
+        """Send status update to the UI.
+        
+        Args:
+            status (str): The status message to be displayed in the UI.
+        """
         self.socketio.emit('status_update', {'status': status}, room=self.session_id)
         print(f"Status update: {status}")
     
     def on_turn_policy_planning_start(self, **kwargs):
-        """Run when the turn policy planning begins."""
+        """Run when the turn policy planning begins.
+        
+        This method is called at the start of planning the next conversation turn.
+        
+        Args:
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update("Planning next conversation turn...")
         super().on_turn_policy_planning_start(**kwargs)
     
     def on_expert_action_planning_start(self, **kwargs):
-        """Run when the expert action planning begins."""
+        """Run when the expert action planning begins.
+        
+        This method is called at the start of planning expert actions.
+        
+        Args:
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update("Planning expert actions...")
         super().on_expert_action_planning_start(**kwargs)
     
     def on_expert_action_planning_end(self, **kwargs):
-        """Run when the expert action planning ends."""
+        """Run when the expert action planning ends.
+        
+        This method is called when expert action planning is complete.
+        
+        Args:
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update("Expert actions planned")
         super().on_expert_action_planning_end(**kwargs)
     
     def on_expert_information_collection_start(self, **kwargs):
-        """Run when the expert information collection starts."""
+        """Run when the expert information collection starts.
+        
+        This method is called when experts begin collecting information.
+        
+        Args:
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update("Collecting information...")
         super().on_expert_information_collection_start(**kwargs)
     
     def on_expert_information_collection_end(self, info, **kwargs):
-        """Run when the expert information collection ends."""
+        """Run when the expert information collection ends.
+        
+        This method is called when experts have finished collecting information.
+        
+        Args:
+            info (list): The collected information items.
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update(f"Collected {len(info)} pieces of information")
         super().on_expert_information_collection_end(info, **kwargs)
     
     def on_expert_utterance_generation_end(self, **kwargs):
-        """Run when the expert utterance generation ends."""
+        """Run when the expert utterance generation ends.
+        
+        This method is called when an expert has finished generating a response.
+        
+        Args:
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update("Generated expert response")
         super().on_expert_utterance_generation_end(**kwargs)
     
     def on_expert_utterance_polishing_start(self, **kwargs):
-        """Run when the expert utterance polishing begins."""
+        """Run when the expert utterance polishing begins.
+        
+        This method is called when the system starts refining an expert's response.
+        
+        Args:
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update("Refining expert response...")
         super().on_expert_utterance_polishing_start(**kwargs)
     
     def on_mindmap_insert_start(self, **kwargs):
-        """Run when the process of inserting new information into the mindmap starts."""
+        """Run when the process of inserting new information into the mindmap starts.
+        
+        This method is called when the system begins organizing new information.
+        
+        Args:
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update("Organizing information...")
         super().on_mindmap_insert_start(**kwargs)
     
     def on_mindmap_insert_end(self, **kwargs):
-        """Run when the process of inserting new information into the mindmap ends."""
+        """Run when the process of inserting new information into the mindmap ends.
+        
+        This method is called when the system has finished organizing new information.
+        
+        Args:
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update("Information organized")
         super().on_mindmap_insert_end(**kwargs)
     
     def on_mindmap_reorg_start(self, **kwargs):
-        """Run when the reorganization of the mindmap begins."""
+        """Run when the reorganization of the mindmap begins.
+        
+        This method is called when the system starts reorganizing the knowledge structure.
+        
+        Args:
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update("Reorganizing knowledge structure...")
         super().on_mindmap_reorg_start(**kwargs)
     
     def on_expert_list_update_start(self, **kwargs):
-        """Run when the expert list update starts."""
+        """Run when the expert list update starts.
+        
+        This method is called when the system begins updating the list of experts.
+        
+        Args:
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update("Updating expert list...")
         super().on_expert_list_update_start(**kwargs)
     
     def on_article_generation_start(self, **kwargs):
-        """Run when the article generation process begins."""
+        """Run when the article generation process begins.
+        
+        This method is called when the system starts generating the final research article.
+        
+        Args:
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update("Generating final article...")
         super().on_article_generation_start(**kwargs)
     
     def on_warmstart_update(self, message, **kwargs):
-        """Run when the warm start process has update."""
+        """Run when the warm start process has an update.
+        
+        This method is called during the warm-up phase to provide status updates.
+        
+        Args:
+            message (str): The warm-up status message.
+            **kwargs: Additional keyword arguments passed by the Co-Storm engine.
+        """
         self._send_status_update(f"Warming up: {message}")
         super().on_warmstart_update(message, **kwargs)
 
 @app.route('/')
 def index():
-    """Render the main page."""
+    """Render the main page of the application.
+    
+    Returns:
+        str: Rendered HTML template for the index page.
+    """
     return render_template('index.html')
 
 @socketio.on('connect')
 def handle_connect():
-    """Handle client connection."""
+    """Handle client connection to the Socket.IO server.
+    
+    This function is called when a new client connects to the Socket.IO server.
+    It logs the connection and stores the session ID.
+    """
     session_id = request.sid
     print(f"Client connected: {session_id}")
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    """Handle client disconnection."""
+    """Handle client disconnection from the Socket.IO server.
+    
+    This function is called when a client disconnects from the Socket.IO server.
+    It logs the disconnection and cleans up any resources associated with the session.
+    """
     session_id = request.sid
     print(f"Client disconnected: {session_id}")
     
-    # Clean up session if it exists
+    # Clean up session data if it exists
     if session_id in active_sessions:
         active_sessions[session_id]["completed"] = True
         del active_sessions[session_id]
