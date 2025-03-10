@@ -4,9 +4,9 @@
 
 This web application provides an interface for the [Co-Storm AI research algorithm](https://storm.genie.stanford.edu/article/do-polls-predict-elections%3F-135449). It allows users to input a research topic and engage in an interactive conversation with the AI to refine the research and generate a comprehensive article with citations.
 
-![Start](results/start.png)
-![In Action](results/in-action.png)
-![Final](results/final.png)
+![Start](media/start.png)
+![In Action](media/in-action.png)
+![Final](media/final.png)
 
 ## Features
 
