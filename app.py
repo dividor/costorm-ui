@@ -5,6 +5,7 @@ import re
 import threading
 import time
 from argparse import Namespace
+from collections import defaultdict
 
 from flask import Flask, render_template, request, jsonify, session
 from flask_socketio import SocketIO
@@ -31,11 +32,54 @@ from knowledge_storm.utils import load_api_key
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
-socketio = SocketIO(app, cors_allowed_origins="*")
+# Use a persistent secret key from environment variables or generate a random one
+# In production, SECRET_KEY should be set in the environment
+app.secret_key = os.getenv('SECRET_KEY', os.urandom(24))
+# If a random key was generated, warn that sessions will be lost on restart
+if not os.getenv('SECRET_KEY'):
+    print("WARNING: Using a random secret key. Sessions will be lost when the server restarts.")
+    print("Set the SECRET_KEY environment variable for persistent sessions.")
+
+# Configure CORS for Socket.IO
+# In production, specify allowed origins instead of "*"
+cors_origins = os.getenv('CORS_ORIGINS', '*')
+socketio = SocketIO(app, cors_allowed_origins=cors_origins)
+if cors_origins == '*':
+    print("WARNING: CORS is configured to allow all origins. This is not recommended for production.")
+    print("Set the CORS_ORIGINS environment variable to restrict allowed origins.")
 
 # Store active research sessions
 active_sessions = {}
+
+# Rate limiting configuration
+RATE_LIMIT_WINDOW = 60  # 60 seconds (1 minute)
+MAX_REQUESTS_PER_WINDOW = 30  # 30 requests per minute
+rate_limit_data = defaultdict(list)
+
+def is_rate_limited(session_id):
+    """Check if a session is currently rate limited.
+    
+    Args:
+        session_id (str): The session ID to check.
+        
+    Returns:
+        bool: True if the session is rate limited, False otherwise.
+    """
+    current_time = time.time()
+    
+    # Remove timestamps older than the window
+    rate_limit_data[session_id] = [
+        timestamp for timestamp in rate_limit_data[session_id]
+        if current_time - timestamp < RATE_LIMIT_WINDOW
+    ]
+    
+    # Check if the number of requests in the window exceeds the limit
+    if len(rate_limit_data[session_id]) >= MAX_REQUESTS_PER_WINDOW:
+        return True
+    
+    # Add the current timestamp to the list
+    rate_limit_data[session_id].append(current_time)
+    return False
 
 # Application constants
 NUM_TURNS = int(os.getenv("NUM_TURNS", 10))  # Number of conversation turns
@@ -340,8 +384,18 @@ def run_costorm_session(session_id, topic):
     """
     try:
         # Create output directory for this session
-        output_dir = f"./results/{session_id}"
+        # Sanitize session_id to prevent path traversal attacks
+        safe_session_id = re.sub(r'[^a-zA-Z0-9_-]', '', session_id)
+        if safe_session_id != session_id:
+            print(f"WARNING: Session ID contained unsafe characters and was sanitized: {session_id} -> {safe_session_id}")
+            session_id = safe_session_id
+            
+        # Use os.path.join for proper path handling
+        output_dir = os.path.join(".", "results", session_id)
+        # Create directory with restricted permissions (0o700 = rwx------)
         os.makedirs(output_dir, exist_ok=True)
+        # Ensure directory permissions are secure
+        os.chmod(output_dir, 0o700)
         
         # Initialize the runner with custom callback handler
         callback_handler = UIStatusCallbackHandler(socketio, session_id)
@@ -736,10 +790,35 @@ def handle_start_research(data):
             - topic (str): The research topic to explore.
     """
     session_id = request.sid
+    
+    # Apply rate limiting
+    if is_rate_limited(session_id):
+        socketio.emit('error', {'message': 'Rate limit exceeded. Please try again later.'}, room=session_id)
+        return
+    
+    # Validate input data
+    if not isinstance(data, dict):
+        socketio.emit('error', {'message': 'Invalid request format'}, room=session_id)
+        return
+        
     topic = data.get('topic', '')
     
-    if not topic:
-        socketio.emit('error', {'message': 'Please provide a research topic'}, room=session_id)
+    # Validate topic
+    if not topic or not isinstance(topic, str):
+        socketio.emit('error', {'message': 'Please provide a valid research topic'}, room=session_id)
+        return
+        
+    # Limit topic length to prevent abuse
+    max_topic_length = 500  # 500 characters should be more than enough
+    if len(topic) > max_topic_length:
+        socketio.emit('error', 
+                     {'message': f'Topic too long (maximum {max_topic_length} characters)'}, 
+                     room=session_id)
+        return
+    
+    # Check if a session is already active for this client
+    if session_id in active_sessions and not active_sessions[session_id].get("completed", True):
+        socketio.emit('error', {'message': 'A research session is already in progress'}, room=session_id)
         return
     
     # Initialize session data
@@ -773,20 +852,47 @@ def handle_send_message(data):
             - message (str): The message content from the user.
     """
     session_id = request.sid
-    message = data.get('message', '')
     
-    if not message:
+    # Apply rate limiting
+    if is_rate_limited(session_id):
+        socketio.emit('error', {'message': 'Rate limit exceeded. Please try again later.'}, room=session_id)
         return
     
-    if session_id in active_sessions and not active_sessions[session_id]["completed"]:
-        # Store user message to be processed by the research thread
-        active_sessions[session_id]["user_message"] = message
-        active_sessions[session_id]["user_typing"] = False
+    # Validate input data
+    if not isinstance(data, dict):
+        socketio.emit('error', {'message': 'Invalid message format'}, room=session_id)
+        return
         
-        # Echo user message back to client
-        socketio.emit('message', {'role': 'user', 'content': message}, room=session_id)
-    else:
+    message = data.get('message', '')
+    
+    # Validate message content
+    if not message or not isinstance(message, str):
+        socketio.emit('error', {'message': 'Message cannot be empty'}, room=session_id)
+        return
+        
+    # Limit message length to prevent abuse
+    max_message_length = 5000  # 5000 characters should be more than enough
+    if len(message) > max_message_length:
+        socketio.emit('error', 
+                     {'message': f'Message too long (maximum {max_message_length} characters)'}, 
+                     room=session_id)
+        return
+    
+    # Check for active session
+    if session_id not in active_sessions:
         socketio.emit('error', {'message': 'No active research session'}, room=session_id)
+        return
+        
+    if active_sessions[session_id]["completed"]:
+        socketio.emit('error', {'message': 'Research session has ended'}, room=session_id)
+        return
+    
+    # Store user message to be processed by the research thread
+    active_sessions[session_id]["user_message"] = message
+    active_sessions[session_id]["user_typing"] = False
+    
+    # Echo user message back to client
+    socketio.emit('message', {'role': 'user', 'content': message}, room=session_id)
 
 @socketio.on('typing_started')
 def handle_typing_started():
@@ -813,4 +919,17 @@ def handle_typing_stopped():
         active_sessions[session_id]["user_typing"] = False
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0', port=5001) 
+    # Determine if we're in development or production mode
+    debug_mode = os.getenv('FLASK_ENV', 'production').lower() == 'development'
+    
+    # In production, don't use debug mode and only listen on localhost by default
+    # unless explicitly configured to listen on all interfaces
+    host = os.getenv('HOST', '127.0.0.1')  # Default to localhost
+    port = int(os.getenv('PORT', 5001))
+    
+    # Log startup configuration
+    print(f"Starting server in {'development' if debug_mode else 'production'} mode")
+    print(f"Listening on {host}:{port}")
+    
+    # Run the application
+    socketio.run(app, debug=debug_mode, host=host, port=port) 

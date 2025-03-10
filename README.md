@@ -137,3 +137,43 @@ If you are interested in running the sample Co-STORM script `run_costorm_gpt.py`
 
 You can then run the script with `python run_costorm_gpt.py --output-dir ./results --enable_log_print --retriever serper`
 
+## Security Considerations
+
+This application implements several security measures to protect against common vulnerabilities:
+
+### Environment Configuration
+
+- **Secret Key Management**: The application uses environment variables for sensitive configuration like API keys and the Flask secret key.
+- **CORS Configuration**: By default, CORS is restricted to specific origins in production mode.
+- **Debug Mode**: Debug mode is disabled in production to prevent information leakage.
+- **Server Binding**: In production, the server binds only to localhost by default, requiring a reverse proxy for public access.
+
+### Input Validation and Rate Limiting
+
+- **Input Validation**: All user inputs are validated for type, length, and content.
+- **Rate Limiting**: API endpoints are protected by rate limiting to prevent abuse.
+- **Session Management**: User sessions are properly managed and cleaned up after disconnection.
+
+### File System Security
+
+- **Path Sanitization**: File paths are sanitized to prevent directory traversal attacks.
+- **Secure Permissions**: Output directories are created with restricted permissions.
+
+### Deployment Recommendations
+
+For production deployment, we recommend:
+
+1. **Use a Reverse Proxy**: Deploy behind Nginx or Apache with proper TLS configuration.
+2. **Set Environment Variables**: Configure all security-related environment variables.
+3. **Regular Updates**: Keep all dependencies updated to patch security vulnerabilities.
+4. **Monitoring**: Implement monitoring to detect and respond to unusual activity.
+
+The following environment variables should be set for enhanced security:
+
+| Variable | Description | Recommendation |
+|----------|-------------|----------------|
+| `SECRET_KEY` | Flask session encryption key | Use a strong random value |
+| `CORS_ORIGINS` | Allowed origins for CORS | Comma-separated list of trusted domains |
+| `FLASK_ENV` | Application environment | Set to 'production' |
+| `HOST` | Host to bind the server to | Use '127.0.0.1' and proxy with Nginx/Apache |
+
