@@ -1,3 +1,4 @@
 secrets.toml
 /results/*
 .env
+.DS_Store
